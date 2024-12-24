@@ -814,7 +814,7 @@ class EpiMetrics():
             self.Foreignness = Foreignness()
 
         # SubCRD model
-        sub_crd_weights = json.load(open(f'{src_dir}/SubCRD_weights.json', 'r'))
+        sub_crd_weights = json.load(open(f'{src_dir}/CRD/SubCRD_weights.json', 'r'))
         self.SubCRD = SubCRD(
             sub_crd_weights[f'MHC{mhc.upper()}ind_POS'],    # position factor
             sub_crd_weights['SUB'],                         # substitution distance
@@ -863,7 +863,7 @@ class EpiMetrics():
         if 'Agretopicity' in metrics:
             metric_dict['Agretopicity'] = self._agretopicity(df)
         if 'PeptCRD' in metrics:
-            metric_dict['PeptCRD'] = self._crd(df, self.PeptCRD)
+            metric_dict['PeptCRD'] = self._crd(df, self.PeptCRD, mhc_bind=True)
         if 'SubCRD' in metrics:
             metric_dict['SubCRD'] = self._crd(df, self.SubCRD)
         if 'Foreignness' in metrics:
@@ -938,8 +938,20 @@ class EpiMetrics():
         scores = self.Foreignness(pepts)
         return scores
     
-    def _crd(self, df, model):
-        scores = df.apply(lambda row: model.score_peptide(row[self.wt_pseudo_core_col], row[self.mt_core_col], row[self.mhc_col]), axis=1)
+    def _crd(self, df, model, mhc_bind=False):
+        if mhc_bind:
+            scores = df.apply(lambda row: model.score_peptide(
+                row[self.wt_pseudo_core_col],
+                row[self.mt_core_col],
+                row[self.mhc_col],
+                row[self.mt_score_col],
+            ), axis=1)
+        else:
+            scores = df.apply(lambda row: model.score_peptide(
+                row[self.wt_pseudo_core_col],
+                row[self.mt_core_col],
+                row[self.mhc_col]
+            ), axis=1)
         return scores
     
     def _harmonic_mean(self, arr, minimal_score=1e-3):

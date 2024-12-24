@@ -1,0 +1,40 @@
+callback:
+  mode: min
+  monitor: valid/CLF/loss
+  val_check_interval: 0.5
+log:
+  entity: kol004
+  project: imm
+model:
+  aa_emb_dim: 2
+  aa_encode_dim: 21
+  aa_encode_key: aa_blosum_encodes
+  aa_vocab_size: 21
+  architecture: MotifConvProjModel
+  crd_idx: -1
+  feature_idx:
+  - 2
+  pept_emb_dim: 2
+  peptide_length: 9
+  pos_emb_method: global
+path:
+  ckpt_best: /carter/users/kol004/neoantigen/tolerance/PeptCRD//training/results/imm/2v3zagum/checkpoints/best-47-20207.ckpt
+  ckpt_last: /carter/users/kol004/neoantigen/tolerance/PeptCRD//training/results/imm/2v3zagum/checkpoints/last.ckpt
+  inputs:
+  - /carter/users/kol004/neoantigen/tolerance/PeptCRD//data/crd_triplets/merged_neg5_triplets.data.h5
+  - /carter/users/kol004/neoantigen/tolerance/PeptCRD//data/iedb_dataset/epitopes.data.h5
+  outdir: /carter/users/kol004/neoantigen/tolerance/PeptCRD//training/results
+  reference: /carter/users/kol004/neoantigen/tolerance/PeptCRD//data/ref.h5
+task: MULTI
+train:
+  batch_size: 32
+  checkpoint: /carter/users/kol004/neoantigen/tolerance/PeptCRD//training/results/imm/f32zyfnp/checkpoints/last.ckpt
+  epochs: 100
+  freeze: true
+  loss_weights:
+  - 0.25
+  - 0.75
+  lr: 0.005
+  lr_scheduler: true
+  triplet_margin: 1
+  weight_decay: 0.01

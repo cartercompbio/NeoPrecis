@@ -4,8 +4,62 @@
 # Description: Cross-reactivity distance models
 # Author: Kohan
 
-import os, sys, json, difflib
+import os, sys, json, yaml, difflib, warnings
 import numpy as np
+from model import *
+warnings.filterwarnings("ignore")
+
+
+class PeptCRD():
+    def __init__(self, ref_file, config_file, ckpt_file):
+        # reference
+        with h5py.File(ref_file, 'r') as f:
+            aa_list = f['aa_list'].asstr()[:].tolist()
+            self.aa_dict = {s:i for i,s in enumerate(aa_list)}
+            allele_list = f['allele_list'].asstr()[:].tolist()
+            self.allele_dict = {s:i for i,s in enumerate(allele_list)}
+
+        # checkpoint path
+        self.ckpt_path = ckpt_file
+
+        # load config
+        config = yaml.safe_load(open(config_file, 'r'))
+
+        # model
+        self.model = CLF(
+            ref_h5_file=ref_file,
+            archt=config['model']['architecture'],
+            aa_encode_key=config['model']['aa_encode_key'],
+            aa_vocab_size=config['model']['aa_vocab_size'],
+            aa_encode_dim=config['model']['aa_encode_dim'],
+            aa_emb_dim=config['model']['aa_emb_dim'],
+            pept_emb_dim=config['model']['pept_emb_dim'],
+            peptide_length=config['model']['peptide_length'],
+            pos_emb_method=config['model']['pos_emb_method'],
+            feature_idx=config['model']['feature_idx'],
+        )
+        self.model.eval()
+
+    # preds = (origin(size=pept_emb_dim), direction(pept_emb_dim), length(1), scaler(1), CRD, immgen)
+    def score_peptide(self, ref_seq, alt_seq, allele, alt_bind_score):
+        # tokenization
+        ref_token = self._tokenization(ref_seq)
+        alt_token = self._tokenization(alt_seq)
+        gene = allele.split('*')[0]
+        mhc = 0 if gene in ['A','B','C'] else 1
+        allele_id = self.allele_dict[allele]
+
+        # prediction
+        peptides = torch.tensor([alt_token, ref_token]).unsqueeze(dim=0)
+        features = torch.tensor([mhc, allele_id, alt_bind_score]).unsqueeze(dim=0)
+        geo_vectors, immgens = self.model(peptides, features)
+        preds = torch.cat((geo_vectors, immgens), dim=1).cpu().numpy()
+
+        return preds
+
+    # tokenize peptide sequence    
+    def _tokenization(self, seq):
+        return [self.aa_dict[s] for s in seq]
 
 
 class SubCRD():
