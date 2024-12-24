@@ -191,7 +191,4 @@ python3 "${SRC_DIR}/calculate_metrics.py" \
     "${OUTDIR}/peptides/${SAMPLE_NAME}.peptide" \
     "${OUTDIR}/metrics/${SAMPLE_NAME}" \
     --mhci_pred_file "${OUTDIR}/mhcbinds/${SAMPLE_NAME}.pred.mhci.csv" \
-    --mhcii_pred_file "${OUTDIR}/mhcbinds/${SAMPLE_NAME}.pred.mhcii.csv" \
-    --dna_af_col "${DNA_AF}" \
-    --rna_af_col "${RNA_AF}" \
-    --rna_exp_col "${RNA_EXP}"
+    --mhcii_pred_file "${OUTDIR}/mhcbinds/${SAMPLE_NAME}.pred.mhcii.csv"

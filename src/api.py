@@ -754,7 +754,7 @@ class BestEpi():
 
 
     # map seq to core positions
-    def _map_seq_to_core(seq, core):
+    def _map_seq_to_core(self, seq, core):
         idx_map = OrderedDict()
         i, j = 0, 0
         while (i < len(seq)) and (j < len(core)):
@@ -824,7 +824,9 @@ class EpiMetrics():
 
         # PeptCRD model
         self.PeptCRD = PeptCRD(
-            f'{src_dir}/PeptCRD_weights.json'
+            f'{src_dir}/CRD/ref.h5',                        # reference h5 file
+            f'{src_dir}/CRD/PeptCRD_config.yaml',           # model config file
+            f'{src_dir}/CRD/PeptCRD_checkpoint.ckpt'        # model checkpoint file
         )
 
     def __call__(
@@ -839,15 +841,12 @@ class EpiMetrics():
 
         # check foreignness module
         if (not foreignness_aval) and ('Foreignness' in metrics):
-            print('Foreignness module is not available, so skip foreignness metric')
             metrics.remove('Foreignness')
-        print('Metrics =', metrics)
         
         # filtered by alleles
         if alleles == 'all':
             alleles = self.alleles
         df = self.df[self.df[self.mhc_col].isin(alleles)]
-        print('Alleles =', alleles)
 
         # preparing array
         mask = ~((df[self.mt_rank_col] <= bind_threshold).to_numpy()) # mask array

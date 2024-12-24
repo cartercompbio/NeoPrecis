@@ -68,7 +68,7 @@ if __name__=='__main__':
     mhc = MHC(args.mhc_file)
 
     # target metrics
-    metrics = ['Robustness', 'PHBR', 'Agretopicity', 'CRDistance', 'Foreignness']
+    metrics = ['Robustness', 'PHBR', 'Agretopicity', 'PeptCRD', 'SubCRD']
     if args.mute_foreignness:
         metrics.remove('Foreignness')
 
