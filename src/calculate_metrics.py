@@ -73,11 +73,13 @@ if __name__=='__main__':
     metrics = ['Robustness', 'PHBR', 'Agretopicity', 'PeptCRD', 'SubCRD']
     if args.mute_foreignness:
         metrics.remove('Foreignness')
+    print('Target presentation and recognition metrics:', metrics)
 
     # MHC-I
-    print('Calculate metrics for MHC-I alleles')
+    print('Calculating metrics for MHC-I alleles ...')
     if os.path.isfile(args.mhci_pred_file):
         mhci_alleles = mhc.name_dict['MHC-I']['standard']
+        print('\tMHC-I alleles:', mhci_alleles)
         mhci_result_df = Main(args.mut_file,
                               args.peptide_prefix,
                               'i',
@@ -93,9 +95,10 @@ if __name__=='__main__':
         mhci_result_df = pd.DataFrame()
     
     # MHC-II
-    print('Calculate metrics for MHC-II alleles')
+    print('Calculating metrics for MHC-II alleles ...')
     if os.path.isfile(args.mhcii_pred_file):
         mhcii_alleles = mhc.name_dict['MHC-II']['standard']
+        print('\tMHC-II alleles:', mhcii_alleles)
         mhcii_result_df = Main(args.mut_file,
                                args.peptide_prefix,
                                'ii',

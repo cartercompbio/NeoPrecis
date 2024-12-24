@@ -1,4 +1,3 @@
-### compute substitution-based cross-reactivity distance
 #!/bin/python3
 # Script Name: CRD.py
 # Description: Cross-reactivity distance models

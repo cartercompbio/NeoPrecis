@@ -185,6 +185,17 @@ echo "
 "
 mkdir -p "${OUTDIR}/metrics"
 
+echo "Updating reference ..."
+python3 "${SRC_DIR}/update_reference.py" \
+    "${SRC_DIR}/CRD/ref.h5" \
+    "${MHC_FILE}" \
+    --mhci_pred_exec "${NETMHCPAN_EXEC}" \
+    --mhcii_pred_exec "${NETMHCIIPAN_EXEC}" \
+    --mhci_peptide_file "${SRC_DIR}/CRD/mhci_random_peptides.txt" \
+    --mhcii_peptide_file "${SRC_DIR}/CRD/mhcii_random_peptides.txt"
+echo
+
+echo "Calculating metrics ..."
 python3 "${SRC_DIR}/calculate_metrics.py" \
     "${MHC_FILE}" \
     "${OUTDIR}/abundance/${SAMPLE_NAME}.mut.abd.csv" \
