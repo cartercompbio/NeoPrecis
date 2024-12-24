@@ -1,4 +1,8 @@
 #!/bin/bash
+# Script Name: run_bam_readcount.sh
+# Description: Run the bam-readcount for RNA AF annotation
+# Author: Kohan
+
 
 source ~/.bashrc
 mamba activate base

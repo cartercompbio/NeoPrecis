@@ -85,6 +85,7 @@ echo
 source "${CONFIG}"
 REAL_PATH=$(realpath $0)
 SRC_DIR=$(dirname ${REAL_PATH})
+SRC_DIR=${SRC_DIR}/src
 SAMPLE_NAME=$(basename ${MUTATION_FILE})
 SAMPLE_NAME=${SAMPLE_NAME%%.*}
 

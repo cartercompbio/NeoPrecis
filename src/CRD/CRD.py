@@ -1,0 +1,131 @@
+### compute substitution-based cross-reactivity distance
+#!/bin/python3
+# Script Name: CRD.py
+# Description: Cross-reactivity distance models
+# Author: Kohan
+
+import os, sys, json, difflib
+import numpy as np
+
+
+class SubCRD():
+    def __init__(self, pos_weights, sub_weights,
+                 specific_allele=True, specific_length=False):
+        self.pos_weights = pos_weights
+        self.sub_weights = sub_weights
+        self.specific_allele = specific_allele
+        self.specific_length = specific_length
+        self.mean_sub_weights = {k: np.mean(list(v.values())) for k,v in sub_weights.items()}
+        self.aa_list = list(self.sub_weights.keys())
+
+    # score single mutation
+    def score_mutation(self, pos, ref_aa, alt_aa, allele='A*01:01', length=9):
+        # position weights
+        pos_weights = self.pos_weights[f'{length}mer'] if self.specific_length else self.pos_weights
+        if self.specific_allele:
+            if allele not in pos_weights:
+                gene = allele.split('*')[0]
+                if len(gene) > 2: gene = gene[:2]
+                pos_weight = pos_weights[gene][f'P{pos+1}']
+            else:
+                pos_weight = pos_weights[allele][f'P{pos+1}']
+        else:
+            pos_weight = pos_weights[f'P{pos+1}']
+
+        # substitution weight
+        if (ref_aa not in self.aa_list) & (alt_aa not in self.aa_list):
+            return 0
+        if ref_aa not in self.aa_list:
+            sub_weight = self.mean_sub_weights[alt_aa]
+        elif alt_aa not in self.aa_list:
+            sub_weight = self.mean_sub_weights[ref_aa]
+        else:
+            sub_weight = self.sub_weights[ref_aa][alt_aa]
+        
+        return pos_weight * sub_weight
+    
+    # score peptide sequence
+    def score_peptide(self, ref_seq, alt_seq, allele):
+        # check alt seq
+        if (type(alt_seq) == float) | (alt_seq == ''):
+            return np.nan
+        length = len(alt_seq)
+        
+        # check ref seq
+        if (type(ref_seq) == float) | (ref_seq == ''):
+            return np.nan
+        
+        # check length
+        if len(ref_seq) == len(alt_seq):
+            mismatches = self._get_missense_mismatch(ref_seq, alt_seq)
+        else:
+            mismatches = self._get_indel_mismatch(ref_seq, alt_seq)
+        
+        # score
+        score = np.sum([self.score_mutation(pos, ref, alt, allele=allele, length=length) for (pos, ref, alt) in mismatches])
+        
+        return score
+
+    # get mismatches for missense mutation
+    # return [(pos, ref_aa, alt_aa), ...]
+    def _get_missense_mismatch(self, ref_seq, alt_seq):
+        length = len(ref_seq)
+        mismatch_list = list()
+        for i in range(length):
+            if ref_seq[i] != alt_seq[i]:
+                mismatch_list.append((i, ref_seq[i], alt_seq[i]))
+        return mismatch_list
+        
+    # get mismatches for indel mutation
+    # return [(pos, ref_aa, alt_aa), ...]
+    def _get_indel_mismatch(self, ref_seq, alt_seq):
+        mismatch_list = list()
+        matcher = difflib.SequenceMatcher(None, ref_seq, alt_seq)
+        opcodes = matcher.get_opcodes()
+        optypes = [code[0] for code in opcodes]
+
+        # bug: replace -> deletion + insertion
+        if ('insert' in optypes) and (len(ref_seq)==len(alt_seq)):
+            for i in range(len(alt_seq)):
+                if ref_seq[i] != alt_seq[i]:
+                    mismatch_list.append((i, ref_seq[i], alt_seq[i]))
+            return mismatch_list
+
+        for (annot, ref_s, ref_e, alt_s, alt_e) in matcher.get_opcodes():
+            if annot == 'equal':
+                continue
+
+            # replacement
+            elif annot == 'replace':
+                ref_len = ref_e - ref_s
+                alt_len = alt_e - alt_s
+                # substitution
+                if alt_len == ref_len:
+                    for i in range(alt_s, alt_e):
+                        mismatch_list.append((i, ref_seq[ref_s+i-alt_s], alt_seq[i]))
+                # substitution + insertion
+                elif alt_len > ref_len:
+                    for i in range(alt_s, alt_e):
+                        if (i - alt_s) < ref_len:
+                            mismatch_list.append((i, ref_seq[ref_s+i-alt_s], alt_seq[i]))
+                        else:
+                            mismatch_list.append((i, '', alt_seq[i]))
+                # substitution + deletion
+                else:
+                    for i in range(ref_s, ref_e):
+                        if (i - ref_s) < alt_len:
+                            mismatch_list.append((alt_s+i-ref_s, ref_seq[i], alt_seq[alt_s+i-ref_s]))
+                        else:
+                            mismatch_list.append((alt_e-1, ref_seq[i], ''))
+
+            # insertion
+            elif annot == 'insert':
+                for i in range(alt_s, alt_e):
+                    mismatch_list.append((i, '', alt_seq[i]))
+
+            # deletion
+            else:
+                for i in range(ref_s, ref_e):
+                    mismatch_list.append((alt_s, ref_seq[i], ''))
+
+        return mismatch_list

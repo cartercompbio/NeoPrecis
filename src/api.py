@@ -12,10 +12,19 @@ from Bio import SeqIO
 from Bio.Seq import translate
 import warnings
 warnings.filterwarnings('ignore')
-
 src_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(f'{src_dir}/NeoantigenEditing')
-from foreignness import Foreignness
+
+# import peptCRD module
+sys.path.append(f'{src_dir}/CRD')
+from CRD import SubCRD, PeptCRD
+
+# check and import foreignness module
+if os.path.isdir(f'{src_dir}/NeoantigenEditing'):
+    foreignness_aval = True
+    sys.path.append(f'{src_dir}/NeoantigenEditing')
+    from foreignness import Foreignness
+else:
+    foreignness_aval = False
 
 
 ###############################
@@ -685,6 +694,7 @@ class BestEpi():
             # best aligned WT
             if best_mt is not None:
                 wt_pepts = [self.pept_df.loc[best_idx, col] for col in self.pept_wt_cols if type(self.pept_df.loc[best_idx, col])==str]
+                wt_pepts = list(set(wt_pepts))
                 if match_pept_length: # len(MT) == len(WT)
                     wt_pepts = [pept for pept in wt_pepts if len(pept) == len(best_mt)]
                 wt_scores = [self.rank_dict.get((pept, allele), 101) for pept in wt_pepts]
@@ -697,7 +707,7 @@ class BestEpi():
             else:
                 best_wt = None
             
-            # record
+            # annotation
             if best_mt is not None:
                 mt_dict = {
                     'allele': allele,
@@ -707,7 +717,7 @@ class BestEpi():
                     'MT_rank': self.mhc_bind_df.loc[(best_mt, allele), self.mhc_rank_col],
                 }
             else:
-                mt_dict = {'allele': allele, 'MT_epitope':np.nan, 'MT_core':np.nan, 'MT_score':np.nan, 'MT_rank':np.nan}
+                mt_dict = {'allele': allele, 'MT_epitope':'', 'MT_core':'', 'MT_score':np.nan, 'MT_rank':np.nan}
             
             if best_wt is not None:
                 wt_dict = {
@@ -717,128 +727,35 @@ class BestEpi():
                     'WT_rank': self.mhc_bind_df.loc[(best_wt, allele), self.mhc_rank_col],
                 }
             else:
-                wt_dict = {'WT_epitope':np.nan, 'WT_core':np.nan, 'WT_score':np.nan, 'WT_rank':np.nan}
+                wt_dict = {'WT_epitope':'', 'WT_core':'', 'WT_score':np.nan, 'WT_rank':np.nan}
+
+            result = {**mt_dict, **wt_dict}
+
+            # pseudo-core
+            ref_seq, alt_seq, alt_core = result['WT_epitope'], result['MT_epitope'], result['MT_core']
+            if (len(ref_seq) == len(alt_seq)) and (ref_seq != ''):
+                result['WT_pseudo_core'] = self._pseudo_core(ref_seq, alt_seq, alt_core)
+            else:
+                result['WT_pseudo_core'] = ''
             
-            results.append({**mt_dict, **wt_dict})
+            results.append(result)
+            
         return pd.DataFrame(results)
+
     
+    # pseudo core
+    # ref and alt seqs should be in the same length
+    def _pseudo_core(self, ref_seq, alt_seq, alt_core):
+        alt_core_map = self._map_seq_to_core(alt_seq, alt_core)
+        pseudo_core = list(alt_core)
+        for i, j in alt_core_map.items():
+            pseudo_core[j] = ref_seq[i]
+        return ''.join(pseudo_core)
 
-### compute TCR cross reactivity
-class CrossReactivity():
-    def __init__(self, pos_weights, sub_weights,
-                 specific_allele=True, specific_length=False):
-        self.pos_weights = pos_weights
-        self.sub_weights = sub_weights
-        self.specific_allele = specific_allele
-        self.specific_length = specific_length
-        self.mean_sub_weights = {k: np.mean(list(v.values())) for k,v in sub_weights.items()}
-        self.aa_list = list(self.sub_weights.keys())
 
-    # score single mutation
-    def score_mutation(self, pos, ref_aa, alt_aa, allele='A*01:01', length=9):
-        # position weights
-        pos_weights = self.pos_weights[f'{length}mer'] if self.specific_length else self.pos_weights
-        if self.specific_allele:
-            if allele not in pos_weights:
-                gene = allele.split('*')[0]
-                if len(gene) > 2: gene = gene[:2]
-                pos_weight = pos_weights[gene][f'P{pos+1}']
-            else:
-                pos_weight = pos_weights[allele][f'P{pos+1}']
-        else:
-            pos_weight = pos_weights[f'P{pos+1}']
-
-        # substitution weight
-        if (ref_aa not in self.aa_list) & (alt_aa not in self.aa_list):
-            return 0
-        if ref_aa not in self.aa_list:
-            sub_weight = self.mean_sub_weights[alt_aa]
-        elif alt_aa not in self.aa_list:
-            sub_weight = self.mean_sub_weights[ref_aa]
-        else:
-            sub_weight = self.sub_weights[ref_aa][alt_aa]
-        
-        return pos_weight * sub_weight
-    
-    # score peptide sequence
-    # if alt_core is provided, map alt_seq idx to alt_core idx
-    def score_peptide(self, ref_seq, alt_seq, allele, alt_core=None):
-        # check alt seq
-        if (type(alt_seq) == float) | (alt_seq == ''):
-            return np.nan
-        length = len(alt_seq)
-        # w/o ref seq
-        if (type(ref_seq) == float) | (ref_seq == ''):
-            return np.nan
-            #score = np.sum([self.score_mutation(i, 'U', alt_seq[i], allele=allele, length=length) for i in range(length)])
-        # w/ ref seq
-        mismatch_list = self.get_mismatch(ref_seq, alt_seq)
-        if alt_core is not None:
-            idx_map_dict = self.map_seq_to_core_pos(alt_seq, alt_core)
-            score = 0
-            for pos, ref, alt in mismatch_list:
-                if pos in idx_map_dict:
-                    score += self.score_mutation(idx_map_dict[pos], ref, alt, allele=allele, length=length)
-        else:
-            score = np.sum([self.score_mutation(pos, ref, alt, allele=allele, length=length) for (pos, ref, alt) in mismatch_list])
-        return score
-        
-    # get mismatches: (pos, ref_aa, alt_aa)
-    def get_mismatch(self, ref_seq, alt_seq):
-        mismatch_list = list()
-        matcher = difflib.SequenceMatcher(None, ref_seq, alt_seq)
-        opcodes = matcher.get_opcodes()
-        optypes = [code[0] for code in opcodes]
-
-        # bug: replace -> deletion + insertion
-        if ('insert' in optypes) and (len(ref_seq)==len(alt_seq)):
-            for i in range(len(alt_seq)):
-                if ref_seq[i] != alt_seq[i]:
-                    mismatch_list.append((i, ref_seq[i], alt_seq[i]))
-            return mismatch_list
-
-        for (annot, ref_s, ref_e, alt_s, alt_e) in matcher.get_opcodes():
-            if annot == 'equal':
-                continue
-
-            # replacement
-            elif annot == 'replace':
-                ref_len = ref_e - ref_s
-                alt_len = alt_e - alt_s
-                # substitution
-                if alt_len == ref_len:
-                    for i in range(alt_s, alt_e):
-                        mismatch_list.append((i, ref_seq[ref_s+i-alt_s], alt_seq[i]))
-                # substitution + insertion
-                elif alt_len > ref_len:
-                    for i in range(alt_s, alt_e):
-                        if (i - alt_s) < ref_len:
-                            mismatch_list.append((i, ref_seq[ref_s+i-alt_s], alt_seq[i]))
-                        else:
-                            mismatch_list.append((i, '', alt_seq[i]))
-                # substitution + deletion
-                else:
-                    for i in range(ref_s, ref_e):
-                        if (i - ref_s) < alt_len:
-                            mismatch_list.append((alt_s+i-ref_s, ref_seq[i], alt_seq[alt_s+i-ref_s]))
-                        else:
-                            mismatch_list.append((alt_e-1, ref_seq[i], ''))
-
-            # insertion
-            elif annot == 'insert':
-                for i in range(alt_s, alt_e):
-                    mismatch_list.append((i, '', alt_seq[i]))
-
-            # deletion
-            else:
-                for i in range(ref_s, ref_e):
-                    mismatch_list.append((alt_s, ref_seq[i], ''))
-
-        return mismatch_list
-    
-    # map the seq pos to core pos
-    def map_seq_to_core_pos(self, seq, core):
-        idx_map = dict()
+    # map seq to core positions
+    def _map_seq_to_core(seq, core):
+        idx_map = OrderedDict()
         i, j = 0, 0
         while (i < len(seq)) and (j < len(core)):
             if seq[i] == core[j]:
@@ -868,43 +785,69 @@ class EpiMetrics():
             mt_rank_col='MT_rank',
             wt_pept_col='WT_epitope',
             wt_core_col='WT_core',
+            wt_pseudo_core_col='WT_pseudo_core',
             wt_score_col='WT_score',
             wt_rank_col='WT_rank'
     ):
         self.df = df
         self.mhc = mhc
         self.mhc_col = mhc_col
-        self.wt_core_col = wt_core_col
-        self.mt_core_col = mt_core_col
-        self.wt_pept_col = wt_pept_col
-        self.mt_pept_col = mt_pept_col
-        self.wt_seq_col = wt_pept_col if mhc == 'i' else wt_core_col
-        self.mt_seq_col = mt_pept_col if mhc == 'i' else mt_core_col # for foreignness
         self.mt_score_col = mt_score_col
         self.mt_rank_col = mt_rank_col
         self.wt_score_col = wt_score_col
         self.wt_rank_col = wt_rank_col
         self.alleles = self.df[self.mhc_col].unique().tolist()
+        
+        # pept: raw peptide sequence
+        # core: MHC-binding core region
+        # seq: for foreignness, pept for MHC-I while core for MHC-II
+        self.wt_core_col = wt_core_col
+        self.wt_pseudo_core_col = wt_pseudo_core_col
+        self.mt_core_col = mt_core_col
+        self.wt_pept_col = wt_pept_col
+        self.mt_pept_col = mt_pept_col
+        self.wt_seq_col = wt_pept_col if mhc == 'i' else wt_core_col # for foreignness
+        self.mt_seq_col = mt_pept_col if mhc == 'i' else mt_core_col # for foreignness
 
-        self.Foreignness = Foreignness()
+        # foreignness
+        if foreignness_aval:
+            self.Foreignness = Foreignness()
 
-        # cross reactivity distance weights
-        weights = json.load(open(f'{src_dir}/CRD_weights.json', 'r'))
-        self.CRD = CrossReactivity(weights[f'MHC{mhc.upper()}ind_POS'], weights['SUB'], specific_length=False, specific_allele=False)
+        # SubCRD model
+        sub_crd_weights = json.load(open(f'{src_dir}/SubCRD_weights.json', 'r'))
+        self.SubCRD = SubCRD(
+            sub_crd_weights[f'MHC{mhc.upper()}ind_POS'],    # position factor
+            sub_crd_weights['SUB'],                         # substitution distance
+            specific_length=False,                          # length-specific position factor
+            specific_allele=False                           # allele-specific position factor
+        )
+
+        # PeptCRD model
+        self.PeptCRD = PeptCRD(
+            f'{src_dir}/PeptCRD_weights.json'
+        )
 
     def __call__(
             self,
             bind_threshold,
             alleles='all',
-            metrics=['Robustness', 'PHBR', 'Agretopicity', 'CRDistance', 'Foreignness'],
+            metrics=['Robustness', 'PHBR', 'Agretopicity', 'PeptCRD', 'SubCRD', 'Foreignness'],
             best_aggregation_method='masked_max',
             save_all_aggregation=False,
     ):
         results = dict()
+
+        # check foreignness module
+        if (not foreignness_aval) and ('Foreignness' in metrics):
+            print('Foreignness module is not available, so skip foreignness metric')
+            metrics.remove('Foreignness')
+        print('Metrics =', metrics)
+        
         # filtered by alleles
         if alleles == 'all':
             alleles = self.alleles
         df = self.df[self.df[self.mhc_col].isin(alleles)]
+        print('Alleles =', alleles)
 
         # preparing array
         mask = ~((df[self.mt_rank_col] <= bind_threshold).to_numpy()) # mask array
@@ -917,8 +860,12 @@ class EpiMetrics():
             results['Robustness'] = (df[self.mt_rank_col] < bind_threshold).sum() # robustness
         if 'PHBR' in metrics:
             metric_dict['PHBR'] = df[self.mt_rank_col].to_numpy()
-        if 'CRDistance' in metrics:
-            metric_dict['CRDistance'] = self._cross_reactivity(df, self.CRD, core_based=True)
+        if 'Agretopicity' in metrics:
+            metric_dict['Agretopicity'] = self._agretopicity(df)
+        if 'PeptCRD' in metrics:
+            metric_dict['PeptCRD'] = self._crd(df, self.PeptCRD)
+        if 'SubCRD' in metrics:
+            metric_dict['SubCRD'] = self._crd(df, self.SubCRD)
         if 'Foreignness' in metrics:
             metric_dict['Foreignness'] = self._foreignness(df)
 
@@ -991,11 +938,8 @@ class EpiMetrics():
         scores = self.Foreignness(pepts)
         return scores
     
-    def _cross_reactivity(self, df, model, core_based=False):
-        if core_based:
-            scores = df.apply(lambda row: model.score_peptide(row[self.wt_pept_col], row[self.mt_pept_col], row[self.mhc_col], alt_core=row[self.mt_core_col]), axis=1)
-        else:
-            scores = df.apply(lambda row: model.score_peptide(row[self.wt_pept_col], row[self.mt_pept_col], row[self.mhc_col]), axis=1)
+    def _crd(self, df, model):
+        scores = df.apply(lambda row: model.score_peptide(row[self.wt_pseudo_core_col], row[self.mt_core_col], row[self.mhc_col]), axis=1)
         return scores
     
     def _harmonic_mean(self, arr, minimal_score=1e-3):

@@ -60,7 +60,7 @@ To predict immunogenic neoantigens, the following inputs are required:
 ### Usage
 To run the script, first prepare a `config.conf` file to define the paths to external tools and reference files. An example configuration file can be found at `config.conf`. Then, execute the command as follows:
 ```bash
-bash src/neoagfinder.sh \
+bash neoagfinder.sh \
   -c config.conf \
   -m examples/case.vep.vcf \
   -a examples/case.mhc.txt \
@@ -111,7 +111,7 @@ To construct the neoantigen landscape, the following inputs are required:
 ### Usage
 
 ```bash
-bash src/neoagland.sh \
+bash neoagland.sh \
   -i examples/neoags.csv \
   -c examples/cluster.tsv \
   -l examples/loci.tsv \

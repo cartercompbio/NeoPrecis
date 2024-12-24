@@ -1,4 +1,8 @@
-# parse MHC alleles for each sample
+#!/bin/python3
+# Script Name: parse_mhc.py
+# Description: Parse MHC alleles for each sample
+# Author: Kohan
+
 
 import os, sys, argparse
 
