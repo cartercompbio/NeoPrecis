@@ -24,6 +24,7 @@ class PeptCRD():
 
         # load config
         config = yaml.safe_load(open(config_file, 'r'))
+        self.pept_emb_dim = config['model']['pept_emb_dim']
 
         # model
         self.model = CLF(
@@ -42,6 +43,15 @@ class PeptCRD():
 
     # preds = (origin(size=pept_emb_dim), direction(pept_emb_dim), length(1), scaler(1), CRD, immgen)
     def score_peptide(self, ref_seq, alt_seq, allele, alt_bind_score):
+        # check sequence
+        out_dim = self.pept_emb_dim*2 + 4
+        if (type(alt_seq) == float) | (alt_seq == ''):
+            return np.full((out_dim,), np.nan)
+        if (type(ref_seq) == float) | (ref_seq == ''):
+            return np.full((out_dim,), np.nan)
+        if len(ref_seq) != len(alt_seq):
+            return np.full((out_dim,), np.nan)
+
         # tokenization
         ref_token = self._tokenization(ref_seq)
         alt_token = self._tokenization(alt_seq)
@@ -53,11 +63,11 @@ class PeptCRD():
         peptides = torch.tensor([alt_token, ref_token]).unsqueeze(dim=0)
         features = torch.tensor([mhc, allele_id, alt_bind_score]).unsqueeze(dim=0)
         geo_vectors, immgens = self.model(peptides, features)
-        preds = torch.cat((geo_vectors, immgens), dim=1).cpu().numpy()
+        preds = torch.cat((geo_vectors, immgens), dim=1).squeeze().detach().numpy()
 
         return preds
 
-    # tokenize peptide sequence    
+    # tokenize peptide sequence
     def _tokenization(self, seq):
         return [self.aa_dict[s] for s in seq]
 
@@ -100,23 +110,18 @@ class SubCRD():
     
     # score peptide sequence
     def score_peptide(self, ref_seq, alt_seq, allele):
-        # check alt seq
+        # check sequence
         if (type(alt_seq) == float) | (alt_seq == ''):
             return np.nan
-        length = len(alt_seq)
-        
-        # check ref seq
         if (type(ref_seq) == float) | (ref_seq == ''):
             return np.nan
-        
-        # check length
         if len(ref_seq) == len(alt_seq):
             mismatches = self._get_missense_mismatch(ref_seq, alt_seq)
         else:
             mismatches = self._get_indel_mismatch(ref_seq, alt_seq)
         
         # score
-        score = np.sum([self.score_mutation(pos, ref, alt, allele=allele, length=length) for (pos, ref, alt) in mismatches])
+        score = np.sum([self.score_mutation(pos, ref, alt, allele=allele, length=len(alt_seq)) for (pos, ref, alt) in mismatches])
         
         return score
 

@@ -649,7 +649,6 @@ def load_netmhcpan_prediction(xls_file, rank_name='Rank', score_name='Score'):
 class BestEpi():
     def __init__(
             self,
-            pept_df,        # peptides
             alleles,        # MHC alleles
             mhc_bind_df,    # MHC binding predictions
             pept_mt_col='MT_epitope',
@@ -661,7 +660,6 @@ class BestEpi():
             mhc_score_col='Score'
     ):
         # variables
-        self.pept_df = pept_df
         self.alleles = alleles
         self.mhc_bind_df = mhc_bind_df
         self.pept_mt_col = pept_mt_col
@@ -677,8 +675,8 @@ class BestEpi():
         self.rank_dict = self.mhc_bind_df[self.mhc_rank_col].to_dict()
 
     
-    def __call__(self, match_pept_length=False):
-        pepts = self.pept_df[self.pept_mt_col]
+    def __call__(self, pept_df, match_pept_length=False):
+        pepts = pept_df[self.pept_mt_col]
         results = list()
         for allele in self.alleles:
             # best MT
@@ -693,7 +691,7 @@ class BestEpi():
 
             # best aligned WT
             if best_mt is not None:
-                wt_pepts = [self.pept_df.loc[best_idx, col] for col in self.pept_wt_cols if type(self.pept_df.loc[best_idx, col])==str]
+                wt_pepts = [pept_df.loc[best_idx, col] for col in self.pept_wt_cols if type(pept_df.loc[best_idx, col])==str]
                 wt_pepts = list(set(wt_pepts))
                 if match_pept_length: # len(MT) == len(WT)
                     wt_pepts = [pept for pept in wt_pepts if len(pept) == len(best_mt)]
@@ -776,8 +774,8 @@ class BestEpi():
 class EpiMetrics():
     def __init__(
             self,
-            df,
-            mhc='i', # i or ii
+            mhc, # i or ii
+            alleles,
             mhc_col='allele',
             mt_pept_col='MT_epitope',
             mt_core_col='MT_core',
@@ -789,14 +787,13 @@ class EpiMetrics():
             wt_score_col='WT_score',
             wt_rank_col='WT_rank'
     ):
-        self.df = df
         self.mhc = mhc
+        self.alleles = alleles
         self.mhc_col = mhc_col
         self.mt_score_col = mt_score_col
         self.mt_rank_col = mt_rank_col
         self.wt_score_col = wt_score_col
         self.wt_rank_col = wt_rank_col
-        self.alleles = self.df[self.mhc_col].unique().tolist()
         
         # pept: raw peptide sequence
         # core: MHC-binding core region
@@ -831,8 +828,8 @@ class EpiMetrics():
 
     def __call__(
             self,
+            df,
             bind_threshold,
-            alleles='all',
             metrics=['Robustness', 'PHBR', 'Agretopicity', 'PeptCRD', 'SubCRD', 'Foreignness'],
             best_aggregation_method='masked_max',
             save_all_aggregation=False,
@@ -844,9 +841,7 @@ class EpiMetrics():
             metrics.remove('Foreignness')
         
         # filtered by alleles
-        if alleles == 'all':
-            alleles = self.alleles
-        df = self.df[self.df[self.mhc_col].isin(alleles)]
+        df = df[df[self.mhc_col].isin(self.alleles)]
 
         # preparing array
         mask = ~((df[self.mt_rank_col] <= bind_threshold).to_numpy()) # mask array
@@ -857,16 +852,30 @@ class EpiMetrics():
         metric_dict = dict()
         if 'Robustness' in metrics:
             results['Robustness'] = (df[self.mt_rank_col] < bind_threshold).sum() # robustness
+        
         if 'PHBR' in metrics:
             metric_dict['PHBR'] = df[self.mt_rank_col].to_numpy()
+            df['PHBR'] = metric_dict['PHBR']
+        
         if 'Agretopicity' in metrics:
             metric_dict['Agretopicity'] = self._agretopicity(df)
+            df['Agretopicity'] = metric_dict['Agretopicity']
+        
         if 'PeptCRD' in metrics:
-            metric_dict['PeptCRD'] = self._crd(df, self.PeptCRD, mhc_bind=True)
+            preds = self._pept_crd(df, self.PeptCRD)
+            pept_emb_dim = (preds.shape[1] - 4)//2
+            cols = [f'origin_{i}' for i in range(pept_emb_dim)] + [f'direction_{i}' for i in range(pept_emb_dim)] + ['length', 'scaler', 'scaled_length', 'PeptCRD']
+            for i,col in enumerate(cols):
+                df[col] = preds[:,i]
+            metric_dict['PeptCRD'] = preds[:,-1]
+        
         if 'SubCRD' in metrics:
-            metric_dict['SubCRD'] = self._crd(df, self.SubCRD)
+            metric_dict['SubCRD'] = self._sub_crd(df, self.SubCRD)
+            df['SubCRD'] = metric_dict['SubCRD']
+        
         if 'Foreignness' in metrics:
             metric_dict['Foreignness'] = self._foreignness(df)
+            df['Foreignness'] = metric_dict['Foreignness']
 
         # aggregation
         aggregations = dict()
@@ -885,9 +894,9 @@ class EpiMetrics():
         
         # output
         if save_all_aggregation:
-            return {**results, **aggregations}
+            return df, {**results, **aggregations}
         else:
-            return results
+            return df, results
 
     # aggregation with all methods
     def _aggregate_all_methods(self, scores, mask, weights, best_idx):
@@ -936,22 +945,30 @@ class EpiMetrics():
         pepts = ['' if type(pept)==float else ''.join(pept.split('-')) for pept in pepts]
         scores = self.Foreignness(pepts)
         return scores
-    
-    def _crd(self, df, model, mhc_bind=False):
-        if mhc_bind:
-            scores = df.apply(lambda row: model.score_peptide(
+
+    # scores = (#alleles,)
+    def _sub_crd(self, df, model):
+        scores = df.apply(lambda row: model.score_peptide(
+            row[self.wt_pseudo_core_col],
+            row[self.mt_core_col],
+            row[self.mhc_col]
+        ), axis=1)
+        return scores.to_numpy()
+
+    # scores = (#alleles, pept_emb_dim*2+4)
+    # (origin(size=pept_emb_dim), direction(pept_emb_dim), length(1), scaler(1), CRD, immgen)
+    def _pept_crd(self, df, model):
+        preds = list()
+        for idx, row in df.iterrows():
+            pred = model.score_peptide(
                 row[self.wt_pseudo_core_col],
                 row[self.mt_core_col],
                 row[self.mhc_col],
                 row[self.mt_score_col],
-            ), axis=1)
-        else:
-            scores = df.apply(lambda row: model.score_peptide(
-                row[self.wt_pseudo_core_col],
-                row[self.mt_core_col],
-                row[self.mhc_col]
-            ), axis=1)
-        return scores
+            )
+            preds.append(pred)
+        preds = np.vstack(preds)
+        return preds
     
     def _harmonic_mean(self, arr, minimal_score=1e-3):
         return arr.shape[0] / np.sum(1/(arr+minimal_score))

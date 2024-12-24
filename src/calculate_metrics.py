@@ -31,22 +31,24 @@ def ArgumentParser(args=None):
 def Main(mut_file, peptide_prefix, mhc, alleles, mhc_bind_file, bind_threshold, out_prefix,
          metrics=['Robustness', 'PHBR', 'Agretopicity', 'CRDistance', 'Foreignness'],
          save_all_aggregation=True):
-    mut_df = pd.read_csv(mut_file, index_col=0)
-    mhc_bind_df = pd.read_csv(mhc_bind_file)
+    mut_df = pd.read_csv(mut_file, index_col=0)     # neoantigen df
+    mhc_bind_df = pd.read_csv(mhc_bind_file)        # MHC-binding prediction df
+    best_epi_obj = BestEpi(alleles, mhc_bind_df)    # BestEpi object
+    epi_metrics_obj = EpiMetrics(mhc, alleles)      # EpiMetrics object
    
     ### compute metrics
     result_df, agg_df = dict(), dict()
     for idx, mut in mut_df.iterrows():
-        # best peptide for each allele
+        # best epitope for each allele
         if not os.path.isfile(f'{peptide_prefix}{idx}.csv'): continue
         pept_df = pd.read_csv(f'{peptide_prefix}{idx}.csv')
-        best_epi = BestEpi(pept_df, alleles, mhc_bind_df)
-        best_epi_df = best_epi()
+        best_epi_df = best_epi_obj(pept_df)
+        # metrics for each best epitope
+        best_epi_df, epi_metrics = epi_metrics_obj(best_epi_df, bind_threshold, metrics=metrics, save_all_aggregation=save_all_aggregation)
         best_epi_df.to_csv(f'{out_prefix}.metrics{idx}.csv', index=False)
-        # metrics
-        epi_metrics = EpiMetrics(best_epi_df, mhc=mhc)
-        result_df[idx] = epi_metrics(bind_threshold, metrics=metrics, save_all_aggregation=save_all_aggregation)
+        result_df[idx] = epi_metrics
     result_df = pd.DataFrame(result_df).T
+    
     return result_df
 
 
