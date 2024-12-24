@@ -73,12 +73,13 @@ echo "
 #####           Paths           #####
 #####################################
 "
-echo "Config file: ${CONFIG}";
-echo "Mutation file: ${MUTATION_FILE}";
-echo "MHC allele file: ${MHC_FILE}";
-echo "RNA aligned file: ${RNA_BAM_FILE}";
-echo "RNA expression file: ${RNA_EXP_FILE}";
-echo "Ouput directory: ${OUTDIR}";
+echo "Config file: ${CONFIG}"
+echo "Mutation file: ${MUTATION_FILE}"
+echo "MHC allele file: ${MHC_FILE}"
+echo "RNA aligned file: ${RNA_BAM_FILE}"
+echo "RNA expression file: ${RNA_EXP_FILE}"
+echo "Ouput directory: ${OUTDIR}"
+echo
 
 # Assign variables
 source "${CONFIG}"
@@ -101,6 +102,7 @@ python3 "${SRC_DIR}/generate_peptides.py" \
     "${OUTDIR}/peptides/${SAMPLE_NAME}" \
     --cdna_file "${CDNA_FASTA}" \
     --cds_file "${CDS_FASTA}"
+echo
 
 
 ### Binding prediction
@@ -112,26 +114,32 @@ echo "
 mkdir -p "${OUTDIR}/mhcbinds"
 
 # parse MHC file
+echo "Parsing MHC allele file ..."
 python3 "${SRC_DIR}/parse_mhc.py" \
     "${MHC_FILE}" \
     "${OUTDIR}/mhc_alleles.txt"
 MHC_FILE=${OUTDIR}/mhc_alleles.txt
+echo
 
 # MHC-I
+echo "Predicting MHC-I binding ..."
 python3 "${SRC_DIR}/run_mhc_bind_pred.py" \
     "${MHC_FILE}" \
     "${OUTDIR}/peptides/${SAMPLE_NAME}.peptide.mhci.txt" \
     "${OUTDIR}/mhcbinds/${SAMPLE_NAME}" \
     --mhc_class I \
     --exec_file "${NETMHCPAN_EXEC}"
+echo
 
 # MHC-II
+echo "Predicting MHC-II binding ..."
 python3 "${SRC_DIR}/run_mhc_bind_pred.py" \
     "${MHC_FILE}" \
     "${OUTDIR}/peptides/${SAMPLE_NAME}.peptide.mhcii.txt" \
     "${OUTDIR}/mhcbinds/${SAMPLE_NAME}" \
     --mhc_class II \
     --exec_file "${NETMHCIIPAN_EXEC}"
+echo
 
 
 ### Abundance annotation
@@ -144,6 +152,7 @@ mkdir -p "${OUTDIR}/abundance"
 
 # bam-readcount
 if [ -f "${RNA_BAM_FILE}" ]; then
+    echo "Running bam-readcount ..."
     bash "${SRC_DIR}/run_bam_readcount.sh" \
         "${OUTDIR}/peptides/${SAMPLE_NAME}.mut.csv" \
         "${RNA_BAM_FILE}" \
@@ -151,16 +160,20 @@ if [ -f "${RNA_BAM_FILE}" ]; then
         "${CONFIG}"
     RNA_AF_FILE=${OUTDIR}/abundance/${SAMPLE_NAME}.readcount.parsed.tsv
 else
+    echo "RNA bam file isn't available. Skip bam-readcount"
     RNA_AF_FILE=""
 fi
+echo
 
 # annotate abundance
+echo "Annotating abundance metrics ..."
 python3 "${SRC_DIR}/annotate_abundance.py" \
     "${OUTDIR}/peptides/${SAMPLE_NAME}.mut.csv" \
     "${OUTDIR}/abundance/${SAMPLE_NAME}.mut.abd.csv" \
     --tumor_colname "${TUMOR_NAME}" \
     --rna_rsem_file "${RNA_EXP_FILE}" \
     --rna_af_file "${RNA_AF_FILE}"
+echo
 
 
 ### Functional measurement
