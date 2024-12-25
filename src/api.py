@@ -563,7 +563,7 @@ def RunMixMHCpred(alleles, peptide_file, output_file,
 def LoadAllowedAlleles(mhc, predictor, dirname):
     if mhc.lower()=='i' and predictor.lower()=='netmhcpan':
         file = f'{dirname}/data/allelenames'
-        alleles = np.loadtxt(file, dtype=str)[:,0].tolist()
+        alleles = np.loadtxt(file, dtype=str)[:,1].tolist()
     elif mhc.lower()=='ii' and predictor.lower()=='netmhcpan':
         file = f'{dirname}/data/allelelist.txt'
         alleles = np.loadtxt(file, dtype=str)[:,0].tolist()

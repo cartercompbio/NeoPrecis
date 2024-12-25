@@ -202,6 +202,7 @@ python3 "${SRC_DIR}/calculate_metrics.py" \
     "${OUTDIR}/peptides/${SAMPLE_NAME}.peptide" \
     "${OUTDIR}/metrics/${SAMPLE_NAME}" \
     --mhci_pred_file "${OUTDIR}/mhcbinds/${SAMPLE_NAME}.pred.mhci.csv" \
-    --mhcii_pred_file "${OUTDIR}/mhcbinds/${SAMPLE_NAME}.pred.mhcii.csv"
+    --mhcii_pred_file "${OUTDIR}/mhcbinds/${SAMPLE_NAME}.pred.mhcii.csv" \
+    --mute_foreignness
 
 mv ${OUTDIR}/metrics/${SAMPLE_NAME}.metrics.csv ${OUTDIR}/${SAMPLE_NAME}.neoantigen.csv
