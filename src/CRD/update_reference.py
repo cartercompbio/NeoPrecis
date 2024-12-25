@@ -3,7 +3,7 @@
 # Description: update motif reference
 # Author: Kohan
 
-import os, sys, h5py, argparse
+import os, sys, shutil, h5py, argparse
 import logomaker as lm
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from api import *
@@ -55,33 +55,44 @@ def Main(ref_file, std_alleles, pred_alleles, peptide_file, pred_exec, bind_thrs
     if len(std_alleles) == 0:
         return
 
+    # tmp files
+    tmp_pred_file = './mhc_preds.txt'
+    tmp_h5_file = './tmp_ref.h5'
+
     # prediction
-    pred_file = './mhc_preds.txt'
-    RunNetMHCpan(','.join(pred_alleles), peptide_file, pred_file, exe_path=pred_exec)
-    pred_df = ReadNetMHCpan(pred_file)
+    RunNetMHCpan(','.join(pred_alleles), peptide_file, tmp_pred_file, exe_path=pred_exec)
+    pred_df = ReadNetMHCpan(tmp_pred_file)
+    os.remove(tmp_pred_file)
 
     # motifs and position factors
-    motifs, pos_facs = GetMotifs(pred_alleles, pred_df, bind_thrs)
+    new_motifs, new_pos_facs = GetMotifs(pred_alleles, pred_df, bind_thrs)
 
-    # append
-    with h5py.File(ref_file, 'a') as ref:
-        # allele list
+    # load previous h5
+    with h5py.File(ref_file, 'r') as ref:
+        aa_list = ref['aa_list'].asstr()[:].tolist()
+        aa_blosum_encodes = ref['aa_blosum_encodes'][:]
+        aa_blosum_pc2_encodes = ref['aa_blosum_pc2_encodes'][:]
         allele_list = ref['allele_list'].asstr()[:].tolist()
-        allele_list = allele_list + std_alleles
-        del ref['allele_list']
-        ref.create_dataset('allele_list', data=allele_list)
+        position_factors = ref['position_factors'][:]
+        motifs = ref['motifs'][:]
+    
+    # add new motifs
+    allele_list = allele_list + std_alleles
+    motifs = np.vstack([motifs, new_motifs])
+    position_factors = np.vstack([position_factors, new_pos_facs])
 
-        # motifs
-        ref_motifs = ref['motifs'][:]
-        ref_motifs = np.vstack([ref_motifs, motifs])
-        del ref['motifs']
-        ref.create_dataset('motifs', data=ref_motifs)
-
-        # position factors
-        ref_pos_facs = ref['position_factors'][:]
-        ref_pos_facs = np.vstack([ref_pos_facs, pos_facs])
-        del ref['position_factors']
-        ref.create_dataset('position_factors', data=ref_pos_facs)
+    # save new h5
+    with h5py.File(tmp_h5_file, 'w') as f:
+        f.create_dataset('aa_list', data=aa_list)
+        f.create_dataset('aa_blosum_encodes', data=aa_blosum_encodes)
+        f.create_dataset('aa_blosum_pc2_encodes', data=aa_blosum_pc2_encodes)
+        f.create_dataset('allele_list', data=allele_list)
+        f.create_dataset('position_factors', data=position_factors)
+        f.create_dataset('motifs', data=motifs)
+    
+    # replace previous h5
+    os.remove(ref_file)
+    shutil.move(tmp_h5_file, ref_file)
 
 
 if __name__=='__main__':

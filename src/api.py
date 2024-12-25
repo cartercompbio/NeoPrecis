@@ -913,10 +913,11 @@ class EpiMetrics():
         if 'PeptCRD' in metrics:
             preds = self._pept_crd(df, self.PeptCRD)
             pept_emb_dim = (preds.shape[1] - 4)//2
-            cols = [f'origin_{i}' for i in range(pept_emb_dim)] + [f'direction_{i}' for i in range(pept_emb_dim)] + ['length', 'scaler', 'scaled_length', 'PeptCRD']
+            cols = [f'origin_{i}' for i in range(pept_emb_dim)] + [f'direction_{i}' for i in range(pept_emb_dim)] + ['GeoDist', 'scaler', 'PeptCRD', 'Immgen']
             for i,col in enumerate(cols):
                 df[col] = preds[:,i]
-            metric_dict['PeptCRD'] = preds[:,-1]
+            metric_dict['PeptCRD'] = preds[:,-2]
+            metric_dict['Immgen'] = preds[:,-1]
         
         if 'SubCRD' in metrics:
             metric_dict['SubCRD'] = self._sub_crd(df, self.SubCRD)
@@ -1005,7 +1006,7 @@ class EpiMetrics():
         return scores.to_numpy()
 
     # scores = (#alleles, pept_emb_dim*2+4)
-    # (origin(size=pept_emb_dim), direction(pept_emb_dim), length(1), scaler(1), CRD, immgen)
+    # (origin(size=pept_emb_dim), direction(pept_emb_dim), GeoDist(1), scaler(1), PeptCRD, Immgen)
     def _pept_crd(self, df, model):
         preds = list()
         for idx, row in df.iterrows():

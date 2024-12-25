@@ -40,7 +40,7 @@ class PeptCRD():
         )
         self.model.eval()
 
-    # preds = (origin(size=pept_emb_dim), direction(pept_emb_dim), length(1), scaler(1), CRD, immgen)
+    # preds = (origin(size=pept_emb_dim), direction(pept_emb_dim), GeoDist(1), scaler(1), PeptCRD, Immgen)
     def score_peptide(self, ref_seq, alt_seq, allele, alt_bind_score):
         # check sequence
         out_dim = self.pept_emb_dim*2 + 4
