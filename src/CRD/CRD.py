@@ -19,7 +19,7 @@ class PeptCRD():
             self.allele_dict = {s:i for i,s in enumerate(allele_list)}
 
         # checkpoint path
-        self.ckpt_path = ckpt_file
+        self.ckpt = torch.load(ckpt_file, map_location=torch.device('cpu'), weights_only=True)
 
         # load config
         config = yaml.safe_load(open(config_file, 'r'))
@@ -38,6 +38,7 @@ class PeptCRD():
             pos_emb_method=config['model']['pos_emb_method'],
             feature_idx=config['model']['feature_idx'],
         )
+        self.model.load_state_dict(self.ckpt['state_dict'])
         self.model.eval()
 
     # preds = (origin(size=pept_emb_dim), direction(pept_emb_dim), GeoDist(1), scaler(1), PeptCRD, Immgen)
