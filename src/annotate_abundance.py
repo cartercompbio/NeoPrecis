@@ -30,15 +30,24 @@ def AddDNAAF(mut_df, colname):
 
 
 def AddRNAEXP(mut_df, exp_file):
-    # transcript to exp dict
     exp_df = pd.read_csv(exp_file, sep='\t')
-    exp_dict = dict()
+
+    # add quartile
+    exp_df['QRT'] = 1
+    for i, q in enumerate([0.25, 0.5, 0.75]):
+        thrs = exp_df[exp_df['TPM']>0]['TPM'].quantile(q)
+        exp_df.loc[exp_df['TPM']>thrs, 'QRT'] = i+2
+
+    # transcript to exp and qrt dict
+    exp_dict, qrt_dict = dict(), dict()
     for idx, row in exp_df.iterrows():
         gene = row['gene_id'].split('.')[0]
         exp_dict[gene] = row['TPM']
+        qrt_dict[gene] = row['QRT']
     
     # annotate
-    mut_df['RNA_EXP'] = mut_df['Gene'].apply(lambda x: exp_dict.get(x, np.nan))
+    mut_df['RNA_EXP'] = mut_df['Gene'].apply(lambda x: exp_dict.get(x, 0))
+    mut_df['RNA_EXP_QRT'] = mut_df['Gene'].apply(lambda x: qrt_dict.get(x, 1))
 
     return mut_df
 
