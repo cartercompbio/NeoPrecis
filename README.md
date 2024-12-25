@@ -85,17 +85,19 @@ This main output file includes the following columns:
 - Coordinates: Genomic coordinates of the mutation
 - Annotations: Fields annotated by VEP
 - Immunogenicity-related metrics
-  - `DNA_AF`: DNA allele frequency
-  - `RNA_AF`: RNA allele frequency
-  - `RNA_DEPTH`: RNA read coverage
-  - `RNA_EXP`: RNA expression level (in TPM)
-  - `RNA_EXP_QTL`: RNA expression level quantile (1 = minimal, 4 = maximal)
-  - `Robustness-{MHC}`: Number of alleles presenting the neoantigen
-  - `PHBR-{MHC}`: Patient harmonic-mean best rank for evaluating MHC-binding affinity (range: 0–100; lower values indicate stronger binding)
-  - `Agretopicity-{MHC}`: Log-scale binding score ratio between mutated and wild-type peptides (>0 indicates stronger binding of the mutated peptide)
-  - `SubCRD-{MHC}`: Substitution-based cross-reactivity distance (CRD) for assessing TCR recognition (higher values indicate stronger recognition)
-  - `PeptCRD-{MHC}`: Peptide-based CRD for assessing TCR recognition (better than SubCRD)
-  - `Immgen-{MHC}`: Immunogenicity prediction considering both MHC-binding and PeptCRD
+  | Metric | Description |
+  | --- | --- |
+  | DNA_AF | DNA allele frequency |
+  | RNA_AF | RNA allele frequency |
+  | RNA_DEPTH | RNA read coverage |
+  | RNA_EXP | RNA expression level (in TPM) |
+  | RNA_EXP_QTL | RNA expression level quantile (1 = minimal, 4 = maximal) |
+  | Robustness-{MHC} | Number of alleles presenting the neoantigen |
+  | PHBR-{MHC} | Patient harmonic-mean best rank for evaluating MHC-binding affinity (range: 0–100; lower values indicate stronger binding) |
+  | Agretopicity-{MHC} | Log-scale binding score ratio between mutated and wild-type peptides (>0 indicates stronger binding of the mutated peptide) |
+  | SubCRD-{MHC} | Substitution-based cross-reactivity distance (CRD) for assessing TCR recognition (higher values indicate stronger recognition) |
+  | PeptCRD-{MHC} | Peptide-based CRD for assessing TCR recognition (better than SubCRD) |
+  | Immgen-{MHC} | Immunogenicity prediction considering both MHC-binding and PeptCRD |
 - `IntImmgen-{MHC}`: Integrated immunogenicity prediction considering abundance, presentation and recognition
 
 Note: {MHC} in the column names refers to the MHC class type, either I or II. Metrics are calculated separately for MHC class I and class II alleles.
