@@ -118,8 +118,8 @@ mkdir -p "${OUTDIR}/mhcbinds"
 echo "Parsing MHC allele file ..."
 python3 "${SRC_DIR}/parse_mhc.py" \
     "${MHC_FILE}" \
-    "${OUTDIR}/mhc_alleles.txt"
-MHC_FILE=${OUTDIR}/mhc_alleles.txt
+    "${OUTDIR}/${SAMPLE_NAME}.mhc.txt"
+MHC_FILE=${OUTDIR}/${SAMPLE_NAME}.mhc.txt
 echo
 
 # MHC-I
@@ -186,7 +186,7 @@ echo "
 mkdir -p "${OUTDIR}/metrics"
 
 echo "Updating reference ..."
-python3 "${SRC_DIR}/update_reference.py" \
+python3 "${SRC_DIR}/CRD/update_reference.py" \
     "${SRC_DIR}/CRD/ref.h5" \
     "${MHC_FILE}" \
     --mhci_pred_exec "${NETMHCPAN_EXEC}" \
@@ -203,3 +203,5 @@ python3 "${SRC_DIR}/calculate_metrics.py" \
     "${OUTDIR}/metrics/${SAMPLE_NAME}" \
     --mhci_pred_file "${OUTDIR}/mhcbinds/${SAMPLE_NAME}.pred.mhci.csv" \
     --mhcii_pred_file "${OUTDIR}/mhcbinds/${SAMPLE_NAME}.pred.mhcii.csv"
+
+mv ${OUTDIR}/metrics/${SAMPLE_NAME}.metrics.csv ${OUTDIR}/${SAMPLE_NAME}.neoantigen.csv

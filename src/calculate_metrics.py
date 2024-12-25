@@ -22,7 +22,7 @@ def ArgumentParser(args=None):
     parser.add_argument('--mhcii_pred_thrs', type=float, default=10, help='Threshold for MHC-II binding rank score')
     parser.add_argument('--dna_af_col', type=str, default='', help='Column name of the DNA allelic fraction')
     parser.add_argument('--rna_af_col', type=str, default='', help='Column name of the RNA allelic fraction')
-    parser.add_argument('--rna_exp_col', type=str, default='', help='Column name of the RNA expression level (e.g. TPM)')
+    parser.add_argument('--rna_qrt_col', type=str, default='', help='Column name of the RNA expression quartile')
     parser.add_argument('--mute_foreignness', action='store_true', help='Skip foreignness prediction')
     parser.add_argument('--save_all_aggregation', action='store_true', help='Output metrics of all aggregation methods')
     return parser
@@ -62,15 +62,15 @@ if __name__=='__main__':
         rename_dict[args.dna_af_col] = 'DNA_AF'
     if (args.rna_af_col != '') and (args.rna_af_col in mut_df.columns):
         rename_dict[args.rna_af_col] = 'RNA_AF'
-    if (args.rna_exp_col != '') and (args.rna_exp_col in mut_df.columns):
-        rename_dict[args.rna_exp_col] = 'RNA_EXP'
+    if (args.rna_qrt_col != '') and (args.rna_qrt_col in mut_df.columns):
+        rename_dict[args.rna_qrt_col] = 'RNA_EXP_QRT'
     mut_df = mut_df.rename(columns=rename_dict)
 
     # MHC alleles
     mhc = MHC(args.mhc_file)
 
     # target metrics
-    metrics = ['Robustness', 'PHBR', 'Agretopicity', 'PeptCRD', 'SubCRD']
+    metrics = ['Robustness', 'PHBR', 'Agretopicity', 'SubCRD', 'PeptCRD', 'Foreignness']
     if args.mute_foreignness:
         metrics.remove('Foreignness')
     print('Target presentation and recognition metrics:', metrics)
@@ -79,7 +79,7 @@ if __name__=='__main__':
     print('Calculating metrics for MHC-I alleles ...')
     if os.path.isfile(args.mhci_pred_file):
         mhci_alleles = mhc.name_dict['MHC-I']['standard']
-        print('\tMHC-I alleles:', mhci_alleles)
+        print('MHC-I alleles:', mhci_alleles)
         mhci_result_df = Main(args.mut_file,
                               args.peptide_prefix,
                               'i',
@@ -91,14 +91,14 @@ if __name__=='__main__':
                               save_all_aggregation=args.save_all_aggregation)
         mhci_result_df = mhci_result_df.rename(columns={col:f'{col}-I' for col in mhci_result_df.columns})
     else:
-        print('\tMHC-I alleles are not provided')
+        print('MHC-I alleles are not provided')
         mhci_result_df = pd.DataFrame()
     
     # MHC-II
     print('Calculating metrics for MHC-II alleles ...')
     if os.path.isfile(args.mhcii_pred_file):
         mhcii_alleles = mhc.name_dict['MHC-II']['standard']
-        print('\tMHC-II alleles:', mhcii_alleles)
+        print('MHC-II alleles:', mhcii_alleles)
         mhcii_result_df = Main(args.mut_file,
                                args.peptide_prefix,
                                'ii',
@@ -110,7 +110,7 @@ if __name__=='__main__':
                                save_all_aggregation=args.save_all_aggregation)
         mhcii_result_df = mhcii_result_df.rename(columns={col:f'{col}-II' for col in mhcii_result_df.columns})
     else:
-        print('\tMHC-II alleles are not provided')
+        print('MHC-II alleles are not provided')
         mhcii_result_df = pd.DataFrame()
     
     result_df = pd.concat([mut_df, mhci_result_df, mhcii_result_df], axis=1)
