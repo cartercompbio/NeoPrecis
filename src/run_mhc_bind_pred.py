@@ -101,12 +101,15 @@ def Main(args):
     allowed_alleles = LoadAllowedAlleles(mhc_class, predictor, exec_dir)
     # target alleles
     mhc = MHC(args.mhc_file)
-    std_alleles = mhc.name_dict[f'MHC-{mhc_class.upper()}']['standard'] # standard allele names
     alleles = mhc.name_dict[f'MHC-{mhc_class.upper()}'][predictor] # predictor's allele names
     print('Target alleles:', alleles)
     # check if targets in allowed list
     alleles = list(set(alleles)) # unique
     alleles = [allele for allele in alleles if allele in allowed_alleles]
+    if mhc_class == 'i':
+        std_alleles = [MHCIAlleleTransform(allele, From=predictor, To='standard') for allele in alleles]
+    else:
+        std_alleles = [MHCIIAlleleTransform(allele, From=predictor, To='standard') for allele in alleles]
     print('Allowed alleles:', alleles)
     # exit if no alleles
     if len(alleles) == 0:

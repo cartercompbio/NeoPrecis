@@ -29,10 +29,11 @@ def ArgumentParser(args=None):
 
 
 def Main(mut_file, peptide_prefix, mhc, alleles, mhc_bind_file, bind_threshold, out_prefix,
-         metrics=['Robustness', 'PHBR', 'Agretopicity', 'CRDistance', 'Foreignness'],
+         metrics=['Robustness', 'PHBR', 'Agretopicity', 'SubCRD', 'PeptCRD', 'Foreignness'],
          save_all_aggregation=True):
     mut_df = pd.read_csv(mut_file, index_col=0)     # neoantigen df
     mhc_bind_df = pd.read_csv(mhc_bind_file)        # MHC-binding prediction df
+    mhc_bind_df = mhc_bind_df.drop_duplicates()     # drop duplicates
     best_epi_obj = BestEpi(alleles, mhc_bind_df)    # BestEpi object
     epi_metrics_obj = EpiMetrics(mhc, alleles)      # EpiMetrics object
    

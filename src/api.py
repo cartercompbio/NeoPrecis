@@ -533,6 +533,7 @@ def ReadMixMHCpred(file):
 ### run NetMHCpan
 def RunNetMHCpan(alleles, peptide_file, output_file,
                  exe_path='/carter/users/kol004/tools/netMHCIIpan-4.3/netMHCIIpan'):
+    alleles = alleles.replace('*', '')
     cmd = [
         exe_path,
         '-a', alleles,
