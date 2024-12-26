@@ -52,8 +52,7 @@ def GetMotifs(alleles, pred_df, bind_thrs):
 
 
 def Main(ref_file, std_alleles, pred_alleles, peptide_file, pred_exec, bind_thrs):
-    if len(std_alleles) == 0:
-        return
+    if len(std_alleles) == 0: return
 
     # tmp files
     tmp_pred_file = './mhc_preds.txt'
@@ -95,8 +94,36 @@ def Main(ref_file, std_alleles, pred_alleles, peptide_file, pred_exec, bind_thrs
     shutil.move(tmp_h5_file, ref_file)
 
 
+def GetNewAlleles(mhc_obj, aval_alleles, mhc, predictor, exec_path):
+    # sample's alleles
+    alleles = mhc_obj.name_dict[f'MHC-{mhc.upper()}'][predictor]
+    print("Sample's alleles:", alleles)
+
+    # predictor-allowed alleles
+    allowed_alleles = LoadAllowedAlleles(mhc, predictor, os.path.dirname(exec_path))
+    alleles = [s for s in alleles if s in allowed_alleles]
+    print("Predictor-allowed alleles:", alleles)
+
+    # ref-available alleles
+    if mhc.lower() == 'i':
+        std_alleles = [MHCIAlleleTransform(s, From=predictor, To='standard') for s in alleles]
+    else:
+        std_alleles = [MHCIIAlleleTransform(s, From=predictor, To='standard') for s in alleles]
+    std_alleles = [s for s in std_alleles if s not in aval_alleles]
+    print("New alleles for ref:", std_alleles)
+
+    # convert to predictor-named alleles
+    if mhc.lower() == 'i':
+        alleles = [MHCIAlleleTransform(s, From='standard', To=predictor) for s in std_alleles]
+    else:
+        alleles = [MHCIIAlleleTransform(s, From='standard', To=predictor) for s in std_alleles]
+    
+    return alleles, std_alleles
+
+
 if __name__=='__main__':
     args = ArgumentParser().parse_args()
+    predictor = 'netmhcpan'
 
     ### reference
     with h5py.File(args.ref_file, 'r') as ref:
@@ -104,22 +131,11 @@ if __name__=='__main__':
 
     ### new alleles
     mhc = MHC(args.mhc_file)
-    # allele name
-    mhci_std_alleles = mhc.name_dict['MHC-I']['standard']
-    mhcii_std_alleles = mhc.name_dict['MHC-II']['standard']
-    mhci_pred_alleles = mhc.name_dict['MHC-I']['netmhcpan']
-    mhcii_pred_alleles = mhc.name_dict['MHC-II']['netmhcpan']
-    # new allele idx
-    mhci_idx = [i for i,s in enumerate(mhci_std_alleles) if s not in allele_list]
-    mhcii_idx = [i for i,s in enumerate(mhcii_std_alleles) if s not in allele_list]
-    # new allele name
-    mhci_std_alleles = [mhci_std_alleles[i] for i in mhci_idx]
-    mhcii_std_alleles = [mhcii_std_alleles[i] for i in mhcii_idx]
-    mhci_pred_alleles = [mhci_pred_alleles[i] for i in mhci_idx]
-    mhcii_pred_alleles = [mhcii_pred_alleles[i] for i in mhcii_idx]
-    print('New MHC-I alleles:', mhci_std_alleles)
-    print('New MHC-II alleles:', mhcii_std_alleles)
-
+    print('##### MHC-I #####')
+    mhci_pred_alleles, mhci_std_alleles = GetNewAlleles(mhc, allele_list, 'i', predictor, args.mhci_pred_exec)
+    print('##### MHC-II #####')
+    mhcii_pred_alleles, mhcii_std_alleles = GetNewAlleles(mhc, allele_list, 'ii', predictor, args.mhcii_pred_exec)
+    
     ### main
     Main(args.ref_file, mhci_std_alleles, mhci_pred_alleles, args.mhci_peptide_file, args.mhci_pred_exec, args.mhci_bind_thrs)
     Main(args.ref_file, mhcii_std_alleles, mhcii_pred_alleles, args.mhcii_peptide_file, args.mhcii_pred_exec, args.mhcii_bind_thrs)

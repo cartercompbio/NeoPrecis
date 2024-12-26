@@ -69,7 +69,9 @@ class PeptCRD():
 
     # tokenize peptide sequence
     def _tokenization(self, seq):
-        return [self.aa_dict[s] for s in seq]
+        # replace all unavailable token with '-'
+        unknown_token = self.aa_dict['-']
+        return [self.aa_dict.get(s, unknown_token) for s in seq]
 
 
 class SubCRD():
