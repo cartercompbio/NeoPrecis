@@ -55,8 +55,8 @@ def Main(ref_file, std_alleles, pred_alleles, peptide_file, pred_exec, bind_thrs
     if len(std_alleles) == 0: return
 
     # tmp files
-    tmp_pred_file = './mhc_preds.txt'
-    tmp_h5_file = './tmp_ref.h5'
+    tmp_pred_file = 'mhc_preds.txt'
+    tmp_h5_file = 'tmp_ref.h5'
 
     # prediction
     RunNetMHCpan(','.join(pred_alleles), peptide_file, tmp_pred_file, exe_path=pred_exec)
