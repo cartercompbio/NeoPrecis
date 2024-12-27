@@ -651,7 +651,7 @@ def MHCIIAlleleTransform(allele, From='mixmhcpred', To='netmhcpan'):
             code_a = allele_code_dict[gene_a][code_a]
             group_a, prot_a = code_a.split(':')
             code_b = allele_code_dict[gene_b][code_b]
-            group_b, prob_b = code_b.split(':')
+            group_b, prot_b = code_b.split(':')
         else: # DPA1*01:03_DPB1*01:01
             allele_a, allele_b = allele.split('_')
             gene_a, code_a = allele_a.split('*')
