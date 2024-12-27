@@ -14,6 +14,9 @@ import warnings
 warnings.filterwarnings('ignore')
 src_dir = os.path.dirname(os.path.abspath(__file__))
 
+# load allele code mapping
+allele_code_dict = json.load(open(f'{src_dir}/allele_code_mapping.json', 'r'))
+
 # import peptCRD module
 sys.path.append(f'{src_dir}/CRD')
 from CRD import SubCRD, PeptCRD
@@ -588,7 +591,9 @@ def LoadAllowedAlleles(mhc, predictor, dirname):
 def MHCIAlleleTransform(allele, From='mixmhcpred', To='netmhcpan'):
     # standardize
     if From == 'mixmhcpred':
-        gene, group, prot = allele[0], allele[1:-2], allele[-2:]
+        gene, code = allele[0], allele[1:]
+        code = allele_code_dict[gene][code]
+        group, prot = code.split(':')
     elif From == 'netmhcpan':
         allele = allele.split('-')[1].replace('*', '')
         code, prot = allele.split(':')
@@ -618,7 +623,8 @@ def MHCIIAlleleTransform(allele, From='mixmhcpred', To='netmhcpan'):
             gene, group, prot = allele.split('_')
         elif From == 'netmhcpan':
             gene, code = allele.split('_')
-            group, prot = code[:-2], code[-2:]
+            code = allele_code_dict[gene][code]
+            group, prot = code.split(':')
         else: # standard
             gene, code = allele.split('*')
             group, prot = code.split(':')
@@ -627,7 +633,7 @@ def MHCIIAlleleTransform(allele, From='mixmhcpred', To='netmhcpan'):
         if To == 'mixmhcpred':
             return f'{gene}_{group}_{prot}'
         elif To == 'netmhcpan':
-            return f'HLA-{gene}_{group}{prot}'
+            return f'{gene}_{group}{prot}'
         else:
             return f'{gene}*{group}:{prot}'
     
@@ -640,8 +646,12 @@ def MHCIIAlleleTransform(allele, From='mixmhcpred', To='netmhcpan'):
             gene_b, group_b, prot_b = allele_b.split('_')
         elif From == 'netmhcpan': # HLA-DPA10103-DPB10101
             allele_a, allele_b = allele[4:].split('-')
-            gene_a, group_a, prot_a = allele_a[:4], allele_a[4:-2], allele_a[-2:]
-            gene_b, group_b, prot_b = allele_b[:4], allele_b[4:-2], allele_b[-2:]
+            gene_a, code_a = allele_a[:4], allele_a[4:]
+            gene_b, code_b = allele_b[:4], allele_b[4:]
+            code_a = allele_code_dict[gene_a][code_a]
+            group_a, prot_a = code_a.split(':')
+            code_b = allele_code_dict[gene_b][code_b]
+            group_b, prob_b = code_b.split(':')
         else: # DPA1*01:03_DPB1*01:01
             allele_a, allele_b = allele.split('_')
             gene_a, code_a = allele_a.split('*')
