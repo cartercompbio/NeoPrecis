@@ -731,6 +731,7 @@ class BestEpi():
         self.mhc_score_col = mhc_score_col
 
         # prediction dict
+        self.mhc_bind_df = self.mhc_bind_df.drop_duplicates()
         self.mhc_bind_df = self.mhc_bind_df.set_index([self.mhc_pept_col, self.mhc_allele_col], drop=True).sort_index()
         self.rank_dict = self.mhc_bind_df[self.mhc_rank_col].to_dict()
 
