@@ -18,8 +18,8 @@ model:
   peptide_length: 9
   pos_emb_method: global
 path:
-  ckpt_best: /carter/users/kol004/neoantigen/tolerance/PeptCRD/training/results/imm/dzxr7vhk/checkpoints/best-60-26412.ckpt
-  ckpt_last: /carter/users/kol004/neoantigen/tolerance/PeptCRD/training/results/imm/dzxr7vhk/checkpoints/last.ckpt
+  ckpt_best: /carter/users/kol004/neoantigen/tolerance/PeptCRD/training/results/imm/lcbk9lx5/checkpoints/best-30-13176.ckpt
+  ckpt_last: /carter/users/kol004/neoantigen/tolerance/PeptCRD/training/results/imm/lcbk9lx5/checkpoints/last.ckpt
   inputs:
   - /carter/users/kol004/neoantigen/tolerance/PeptCRD/data/crd_triplets/merged_neg5_triplets.data.h5
   - /carter/users/kol004/neoantigen/tolerance/PeptCRD/data/cedar_filter_dataset/epitopes.data.h5
