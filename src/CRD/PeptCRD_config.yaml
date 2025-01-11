@@ -18,17 +18,17 @@ model:
   peptide_length: 9
   pos_emb_method: global
 path:
-  ckpt_best: /carter/users/kol004/neoantigen/tolerance/PeptCRD//training/results/imm/2v3zagum/checkpoints/best-47-20207.ckpt
-  ckpt_last: /carter/users/kol004/neoantigen/tolerance/PeptCRD//training/results/imm/2v3zagum/checkpoints/last.ckpt
+  ckpt_best: /carter/users/kol004/neoantigen/tolerance/PeptCRD/training/results/imm/dzxr7vhk/checkpoints/best-60-26412.ckpt
+  ckpt_last: /carter/users/kol004/neoantigen/tolerance/PeptCRD/training/results/imm/dzxr7vhk/checkpoints/last.ckpt
   inputs:
-  - /carter/users/kol004/neoantigen/tolerance/PeptCRD//data/crd_triplets/merged_neg5_triplets.data.h5
-  - /carter/users/kol004/neoantigen/tolerance/PeptCRD//data/iedb_dataset/epitopes.data.h5
-  outdir: /carter/users/kol004/neoantigen/tolerance/PeptCRD//training/results
-  reference: /carter/users/kol004/neoantigen/tolerance/PeptCRD//data/ref.h5
+  - /carter/users/kol004/neoantigen/tolerance/PeptCRD/data/crd_triplets/merged_neg5_triplets.data.h5
+  - /carter/users/kol004/neoantigen/tolerance/PeptCRD/data/cedar_filter_dataset/epitopes.data.h5
+  outdir: /carter/users/kol004/neoantigen/tolerance/PeptCRD/training/results
+  reference: /cellar/users/kol004/neoantigen/CrossReactivityDistance/data/peptModel_ref.h5
 task: MULTI
 train:
   batch_size: 32
-  checkpoint: /carter/users/kol004/neoantigen/tolerance/PeptCRD//training/results/imm/f32zyfnp/checkpoints/last.ckpt
+  checkpoint: /carter/users/kol004/neoantigen/tolerance/PeptCRD/training/results/imm/f32zyfnp/checkpoints/last.ckpt
   epochs: 100
   freeze: true
   loss_weights:
