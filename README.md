@@ -153,4 +153,15 @@ Each column represents a score scale:
 - Normalized percentile (between 0 to 1) within the melanoma and NSCLC cohorts are provided to contextualize the metric values and enhance interpretability.
 
 ## Reference
+- netMHCpan-4.1: Reynisson, B., Alvarez, B., Paul, S., Peters, B. & Nielsen, M. NetMHCpan-4.1 and NetMHCIIpan-4.0: improved predictions of MHC antigen presentation by concurrent motif deconvolution and integration of MS MHC eluted ligand data. Nucleic Acids Res. 48, 449–454 (2020).
+- NetMHCIIpan-4.3: Nilsson, J. B. et al. Accurate prediction of HLA class II antigen presentation across all loci using tailored data acquisition and refined machine learning. Sci. Adv. 9, eadj6367 (2023).
+- bam-readcount: Khanna, A. et al. Bam-readcount - rapid generation of basepair-resolution sequence metrics. J. Open Source Softw. 7, 3722 (2022).
+- PyClone: Roth, A. et al. PyClone: statistical inference of clonal population structure in cancer. Nat. Methods 11, 396–398 (2014).
+- NCI cohort: Parkhurst, M. R. et al. Unique Neoantigens Arise from Somatic Mutations in Patients with Gastrointestinal Cancers. Cancer Discov. 9, 1022–1035 (2019).
+- IEDB: Vita, R. et al. The Immune Epitope Database (IEDB): 2018 update. Nucleic Acids Res. 47, D339–D343 (2019).
+- VDJdb: Goncharov, M. et al. VDJdb in the pandemic era: a compendium of T cell receptors specific for SARS-CoV-2. Nat. Methods 19, 1017–1019 (2022).
+- CEDAR: Koşaloğlu-Yalçın, Z. et al. The Cancer Epitope Database and Analysis Resource (CEDAR). Nucleic Acids Res. 51, D845–D852 (2023).
 
+**Please refer to the NeoPrecis manuscript for the complete list of references**
+
+## Citation
