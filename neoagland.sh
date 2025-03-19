@@ -70,9 +70,11 @@ echo "
 ##### NP-Landscape Calculation  #####
 #####################################
 "
+echo "Constructing neoantigen landscape ..."
 python3 "${SRC_DIR}/construct_landscape.py" \
     "${INPUT}" \
     "${CLUSTER_FILE}" \
     "${LOCI_FILE}" \
     "${OUTPUT}" \
     --rank_ref "${SRC_DIR}/landscape_rank_ref.csv"
+echo

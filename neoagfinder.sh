@@ -204,6 +204,7 @@ python3 "${SRC_DIR}/calculate_metrics.py" \
     --mhci_pred_file "${OUTDIR}/mhcbinds/${SAMPLE_NAME}.pred.mhci.csv" \
     --mhcii_pred_file "${OUTDIR}/mhcbinds/${SAMPLE_NAME}.pred.mhcii.csv" \
     --mute_foreignness
+echo
 
 mv ${OUTDIR}/metrics/${SAMPLE_NAME}.metrics.csv ${OUTDIR}/${SAMPLE_NAME}.neoantigen.csv
 
@@ -227,3 +228,4 @@ fi
 ### Clean redundant columns
 python3 "${SRC_DIR}/clean_columns.py" \
     "${OUTDIR}/${SAMPLE_NAME}.neoantigen.csv"
+echo

@@ -24,9 +24,10 @@ def ArgumentParser(args=None):
 # annotate neoantigens with pyclone loci information
 def PycloneLociAnnotation(neoag_df, loci_df, id_col='mutation_id', cluster_col='cluster_id', prev_col='cellular_prevalence'):
     index_cols = ['#CHROM', 'POS', 'REF', 'ALT']
-    loci_df[index_cols] = loci_df[id_col].str.split('_', expand=True)
-    loci_df = loci_df[index_cols + [cluster_col, prev_col]]
-    loci_df['POS'] = loci_df['POS'].astype(int)
+    loci_df[index_cols] = loci_df[id_col].str.split('_', expand=True) # split ID col into chr, pos, ref, alt
+    loci_df = loci_df[index_cols + [cluster_col, prev_col]] # keep necessary columns
+    loci_df.loc[:, '#CHROM'] = loci_df['#CHROM'].apply(lambda x: 'chr' + str(x)) # 1 -> chr1
+    loci_df.loc[:, 'POS'] = loci_df['POS'].astype(int)
     neoag_df = neoag_df.merge(loci_df, on=index_cols, how='left')
     return neoag_df
 
