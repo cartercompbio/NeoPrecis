@@ -49,7 +49,7 @@ class LRPredictor():
 
 
 def Main(input_file, model_file, dna_af_col, rna_af_col, rna_exp_col, phbr_col, immuno_col):
-    df = pd.read_csv(input_file)
+    df = pd.read_csv(input_file, index_col=0)
     models = np.load(model_file, allow_pickle=True).item()
     mhci_model = LRPredictor(models['MHC-I'])       # MHC-I model
     mhcii_model = LRPredictor(models['MHC-II'])     # MHC-II model
