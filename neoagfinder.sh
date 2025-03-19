@@ -206,3 +206,24 @@ python3 "${SRC_DIR}/calculate_metrics.py" \
     --mute_foreignness
 
 mv ${OUTDIR}/metrics/${SAMPLE_NAME}.metrics.csv ${OUTDIR}/${SAMPLE_NAME}.neoantigen.csv
+
+
+### Integrated model
+echo "
+#####################################
+##### 5. Integrated Prediction  #####
+#####################################
+"
+if [ -f "${RNA_BAM_FILE}" ]; then
+    echo "Predicting ..."
+    python3 "${SRC_DIR}/predict_integrated.py" \
+        "${OUTDIR}/${SAMPLE_NAME}.neoantigen.csv" \
+        "${SRC_DIR}/integrated_model.rna.npy"
+else
+    echo "Skip because RNA features are not available"
+fi
+
+
+### Clean redundant columns
+python3 "${SRC_DIR}/clean_columns.py" \
+    "${OUTDIR}/${SAMPLE_NAME}.neoantigen.csv"

@@ -1,13 +1,13 @@
 # NeoPrecis
-NeoPrecis is an advanced tool designed to enhance cancer immunotherapy by accurately predicting neoantigens.
+NeoPrecis is an computational framework designed to advance personalized cancer immunotherapy by assessing neoantigen immunogenicity.
 
 
 ## Overview
 
-The immune system plays a crucial role in combating tumors by recognizing tumor-specific antigens. Among these, neoantigens—derived from somatic mutations—represent a key category due to their tumor-specific nature and high immunogenic potential. However, identifying immunogenic neoantigens remains a significant challenge.
+The immune system plays a crucial role in combating tumors by recognizing tumor-specific antigens. Among these, neoantigens—derived from somatic mutations—represent a key category due to their tumor-specific nature and high immunogenic potential. However, identifying immunogenic neoantigens and evaluating individual neoantigen landscape remain significant challenges.
 
 NeoPrecis addresses this challenge through two key functionalities:
-1. **Neoantigen Immunogenicity Prediction**: Enables the identification of neoantigens for designing cancer vaccines.
+1. **Neoantigen Immunogenicity Prediction**: Enables the identification of immunogenic neoantigens for designing cancer vaccines.
 2. **Neoantigen Landscape Construction**: Facilitates the prediction of immune checkpoint inhibitor response by mapping the overall neoantigen profile.
 
 
@@ -47,12 +47,12 @@ To install the necessary dependencies, you can use one of the following methods:
 To predict immunogenic neoantigens, the following inputs are required:
 
 - Somatic Mutations
-  - A VEP-annotated `VCF` file (`examples/case.vep.vcf`)
-  - Ensure the following VEP options are enabled: --symbol, --hgvs, --canonical
+  - A VEP-annotated `VCF` file (e.g. `examples/case.vep.vcf`)
+  - Ensure the following VEP options are enabled: `--symbol`, `--hgvs`, `--canonical`
   - Record the VEP version used, as it is required for subsequent analyses
 - MHC Alleles
-  - An allele list file (`examples/case.mhc.txt`) or an HLA-HD output file (`examples/case_final.result.txt`)
-  - It is recommended to use the default IMGT-HLA version provided by HLA-HD to ensure compatibility with MHC-binding predictors. Updated IMGT-HLA versions may include rare alleles that are not supported by all predictors
+  - An allele list file (e.g. `examples/case.mhc.txt`) or an HLA-HD output file (e.g. `examples/case_final.result.txt`)
+  - It is recommended to use the default IMGT-HLA version provided by HLA-HD to ensure compatibility with MHC-binding predictors. Updated IMGT-HLA versions may include rare alleles that are not supported by all predictors.
 - RNA Expression (Optional)
   - A STAR-aligned `BAM` file (`examples/caseAligned.sortedByCoord.out.bam`) and an RSEM result file (`examples/case.genes.results`)
   - These files are used to calculate RNA expression levels and RNA allele frequencies, providing additional insights for neoantigen prioritization
@@ -64,23 +64,20 @@ bash neoagfinder.sh \
   -c config.conf \
   -m examples/case.vep.vcf \
   -a examples/case.mhc.txt \
-  -r examples/caseAligned.sortedByCoord.out.bam \
-  -g examples/examples/case.genes.results \
-  -t case_tumor \
-  -o outdir
+  -o examples
 ```
 
 Description of arguments:
-- `-c config.conf`: Configuration file
-- `-m examples/case.vep.vcf`: VEP-annotated VCF file
-- `-a examples/case.mhc.txt`: Input file listing MHC alleles
-- `-r examples/caseAligned.sortedByCoord.out.bam` (optional): STAR-aligned RNA-seq BAM file
-- `-g examples/case.genes.results` (optional): RSEM result file of gene expression
-- `-t case_tumor` (optional): Sample identifier used to specify the tumor sample in the VCF file. If not provided, the script will default to capturing a name containing the word "tumor".
-- `-o outdir`: Output folder
+- `-c`: Configuration file
+- `-m`: VEP-annotated VCF file
+- `-a`: Input file listing MHC alleles
+- `-r` (optional): STAR-aligned RNA-seq BAM file
+- `-g` (optional): RSEM result file of gene expression
+- `-t` (optional): Sample identifier used to specify the tumor sample in the VCF file. If not provided, the script will default to capturing a name containing the substring "tumor".
+- `-o`: Output folder
 
 ### Interpretation
-The output folder contains a main output file, `outdir/neoags.csv`, along with intermediate files generated during the analysis.
+The output folder contains a main output file, `${outdir}/${basename}.neoantigen.csv` (e.g. `examples/case.neoantigen.csv`), along with intermediate files generated during the analysis.
 This main output file includes the following columns:
 - Coordinates: Genomic coordinates of the mutation
 - Annotations: Fields annotated by VEP
@@ -91,16 +88,18 @@ This main output file includes the following columns:
   | RNA_AF | RNA allele frequency |
   | RNA_DEPTH | RNA read coverage |
   | RNA_EXP | RNA expression level (in TPM) |
-  | RNA_EXP_QTL | RNA expression level quantile (1 = minimal, 4 = maximal) |
+  | RNA_EXP_QRT | RNA expression level quartile (1 = minimal, 4 = maximal) |
   | Robustness-{MHC} | Number of alleles presenting the neoantigen |
   | PHBR-{MHC} | Patient harmonic-mean best rank for evaluating MHC-binding affinity (range: 0–100; lower values indicate stronger binding) |
   | Agretopicity-{MHC} | Log-scale binding score ratio between mutated and wild-type peptides (>0 indicates stronger binding of the mutated peptide) |
-  | SubCRD-{MHC} | Substitution-based cross-reactivity distance (CRD) for assessing TCR recognition (higher values indicate stronger recognition) |
-  | PeptCRD-{MHC} | Peptide-based CRD for assessing TCR recognition (better than SubCRD) |
-  | Immgen-{MHC} | Immunogenicity prediction considering both MHC-binding and PeptCRD |
-- `IntImmgen-{MHC}`: Integrated immunogenicity prediction considering abundance, presentation and recognition
+  | NP-Immuno-{MHC} | Immunogenicity prediction focusing on T-cell recognition |
+  | NP-Integrated-{MHC} | Immunogenicity prediction considering antigen abundance, MHC presentation, and T-cell recognition (only applied if RNA is available) |
 
-Note: {MHC} in the column names refers to the MHC class type, either I or II. Metrics are calculated separately for MHC class I and class II alleles.
+Notes
+- {MHC} in the column names refers to the MHC class type, either I or II. Metrics are calculated separately for MHC class I and class II alleles.
+- NP-Immuno is trained on TCR-pMHC binding data from [IEDB](https://www.iedb.org/) and [VDJdb](https://vdjdb.cdr3.net/), as well as T-cell activation assay data from [CEDAR](https://cedar.iedb.org/).
+- NP-Integrated is a logistic regression model incorporating five features–DNA_AF, RNA_AF, RNA_EXP_QTL, PHBR, and NP-Immuno–trained on the [NCI GI cancer cohort](https://www.ncbi.nlm.nih.gov/projects/gap/cgi-bin/study.cgi?study_id=phs001003.v3.p1).
+
 
 ## Construction of Neoantigen Landscape
 
