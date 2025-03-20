@@ -115,4 +115,4 @@ if __name__=='__main__':
         mhcii_result_df = pd.DataFrame()
     
     result_df = pd.concat([mut_df, mhci_result_df, mhcii_result_df], axis=1)
-    result_df.to_csv(f'{args.out_prefix}.metrics.csv')
+    result_df.to_csv(f'{args.out_prefix}.metrics.csv', index=False)

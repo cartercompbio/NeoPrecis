@@ -118,7 +118,7 @@ bash neoagland.sh \
   -i examples/case.neoantigen.csv \
   -c examples/case.cluster.tsv \
   -l examples/case.loci.tsv \
-  -o examples/case.neoagland.csv
+  -o examples/case.landscape.csv
 ```
 
 Description of arguments:

@@ -1,0 +1,11 @@
+mutation_id	sample_id	cluster_id	cellular_prevalence	cellular_prevalence_std	variant_allele_frequency
+1_205070497_C_T	case	0	0.8	0	0.8
+12_49795969_G_A	case	1	0.9	0	0.9
+12_78006440_C_T	case	2	0.2	0	0.2
+16_50633494_C_T	case	3	0.3	0	0.3
+18_46084341_G_C	case	0	0.75	0	0.75
+6_160600964_G_A	case	1	0.88	0	0.88
+6_18263865_C_G	case	1	0.92	0	0.92
+7_150628102_C_T	case	1	0.99	0	0.99
+7_20160176_T_G	case	1	0.94	0	0.94
+8_17939740_C_T	case	2	0.23	0	0.23

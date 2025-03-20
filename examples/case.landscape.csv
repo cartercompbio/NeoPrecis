@@ -1,0 +1,7 @@
+,value,percentile_melanoma,percentile_NSCLC
+TMB,10.0,0.0,0.0
+TNB,4.0,0.0,0.0
+NPB,5.0,0.01,0.0
+NP-LandscapeSum,1.1312224103192363,0.01,0.0
+NP-LandscapeCCF,0.7539143843769014,0.04,0.01
+NP-LandscapeClone,0.8939589249677318,0.04,0.02
