@@ -196,13 +196,13 @@ def Main(input_file, cluster_file, loci_file, output_file, rank_ref_file):
     metric_dict['value']['TMB'] = df.shape[0]
     metric_dict['value']['TNB'] = (df['PHBR-I'] <= 2).sum()
     metric_dict['value']['NPB'] = (df['NP-Immuno-dual'] >= 0.16).sum()
-    metric_dict['value']['NP-LandscapeSum'] = df['NP-Immuno-dual'].sum()
+    metric_dict['value']['NP-LandscapeSum'] = np.log10(df['NP-Immuno-dual'].sum())
 
     # w/ clonality
-    metric_dict['value']['NP-LandscapeCCF'] = (df['NP-Immuno-dual'] * df['cellular_prevalence']).sum()
+    metric_dict['value']['NP-LandscapeCCF'] = np.log10((df['NP-Immuno-dual'] * df['cellular_prevalence']).sum())
     subclone_scoring = SubcloneScoring(df, cluster_df) # subclone scoring obj
     subclone_metric_dict = subclone_scoring.scoring() # scoring with subclone architecture
-    metric_dict['value']['NP-LandscapeClone'] = subclone_metric_dict['NP-Immuno-dual']
+    metric_dict['value']['NP-LandscapeClone'] = np.log10(subclone_metric_dict['NP-Immuno-dual'])
 
     ### percentile ranking
     rank_df = pd.read_csv(rank_ref_file, index_col=0)
