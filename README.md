@@ -29,7 +29,7 @@ Please download the following reference files:
 - The genome reference file used for RNA-seq alignment with STAR.
 
 ### Required Packages
-To install the necessary dependencies, you can use one of the following methods:
+To install the necessary dependencies, choose one of the following methods. Installation should take no more than 10 minutes.
 - Python Required Packages: Install the packages listed in `setup/requirements.txt` using `pip`.
   ```bash
   pip3 install -r setup/requirements.txt
@@ -151,6 +151,11 @@ Each column represents a score scale:
 
 **Notes**
 - Normalized percentile (between 0 to 1) within the melanoma and NSCLC cohorts are provided to contextualize the metric values and enhance interpretability.
+
+
+## Analyses for the Manuscript
+The analyses for the manuscript are detailed in the `manuscript` directory. Please refer to its contents for reproducing the results presented in our manuscript.
+
 
 ## Reference
 - netMHCpan-4.1: Reynisson, B., Alvarez, B., Paul, S., Peters, B. & Nielsen, M. NetMHCpan-4.1 and NetMHCIIpan-4.0: improved predictions of MHC antigen presentation by concurrent motif deconvolution and integration of MS MHC eluted ligand data. Nucleic Acids Res. 48, 449–454 (2020).
