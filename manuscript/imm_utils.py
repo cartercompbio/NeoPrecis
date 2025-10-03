@@ -61,15 +61,33 @@ class ModelInterpretation():
             self.ref_allele_list = list(ref['allele_list'].asstr())
             self.ref_motifs = ref['motifs'][:]
             self.ref_pos_facs = ref['position_factors'][:]
-            self.ref_aa_encode = ref['aa_blosum_encodes'][:]
-            self.ref_aa_pc2_encode = ref['aa_blosum_pc2_encodes'][:]
+            self.blosum_aa_encode = ref['aa_blosum_encodes'][:] # BLOSUM62
+            self.pmbec_aa_encode = ref['aa_pmbec_encodes'][:] # PMBEC
+            self.blosum_aa_pc2_encode = ref['aa_blosum_pc2_encodes'][:] # BLOSUM62
+            self.pmbec_aa_pc2_encode = ref['aa_pmbec_pc2_encodes'][:] # PMBEC
 
         ### BLOSUM62 PC2 embedding distance
-        aa_blosum_df = pd.DataFrame(self.ref_aa_pc2_encode, index=self.ref_aa_list, columns=['emb1', 'emb2'])
+        
+        # distance based on PCA
+        aa_blosum_df = pd.DataFrame(self.blosum_aa_pc2_encode, index=self.ref_aa_list, columns=['emb1', 'emb2'])
         self.aa_blosum_dist_series = self._calculate_aa_emb_distance(aa_blosum_df)
         
+        # distance based on original encoding
+        aa_blosum_df = pd.DataFrame(self.blosum_aa_encode, index=self.ref_aa_list, columns=self.ref_aa_list)
+        self.aa_blosum_subdist_series = -aa_blosum_df.stack() # negative for distance
+
+        ### PMBEC PC2 embedding distance
+        
+        # distance based on PCA
+        aa_pmbec_df = pd.DataFrame(self.pmbec_aa_pc2_encode, index=self.ref_aa_list, columns=['emb1', 'emb2'])
+        self.aa_pmbec_dist_series = self._calculate_aa_emb_distance(aa_pmbec_df)
+        
+        # distance based on original encoding
+        aa_pmbec_df = pd.DataFrame(self.pmbec_aa_encode, index=self.ref_aa_list, columns=self.ref_aa_list)
+        self.aa_pmbec_subdist_series = -aa_pmbec_df.stack() # negative for distance
+        
         ### ckpt
-        self.ckpt = torch.load(ckpt_file, map_location=torch.device('cpu'))
+        self.ckpt = torch.load(ckpt_file)
         self.aa_emb_df = self._build_aa_emb_df(self.ckpt)
         self.aa_emb_dist_series = self._calculate_aa_emb_distance(self.aa_emb_df)
         self.mhci_pos_facs = self.ckpt['state_dict']['model.mhci_glb_pos_fac'].cpu().numpy()
@@ -77,7 +95,7 @@ class ModelInterpretation():
 
         ### model
         self.model = CLF(
-            ref_h5_file=ref_file,
+            ref_h5_file=self.ckpt['hyper_parameters']['ref_h5_file'],
             archt=self.ckpt['hyper_parameters']['archt'],
             aa_emb_dim=self.ckpt['hyper_parameters']['aa_emb_dim'],
             pept_emb_dim=self.ckpt['hyper_parameters']['pept_emb_dim'],
@@ -96,8 +114,11 @@ class ModelInterpretation():
     # annotate with blosum, substitution, and sub+pos distances
     # pos has to be 0-based
     def AnnotateSubDistance(self, df, wt_aa_col='WT_aa', mt_aa_col='MT_aa', mhc_col='mhc', pos_col='pos'):
-        # substitution distance: BLOSUM62
-        df['BLOSUMDist'] = df.set_index([wt_aa_col, mt_aa_col]).index.map(self.aa_blosum_dist_series)
+        # substitution distance: baseline (BLOSUM62 and PMBEC)
+        df['BLOSUMDist'] = df.set_index([wt_aa_col, mt_aa_col]).index.map(self.aa_blosum_dist_series) # PCA distance
+        df['PMBECDist'] = df.set_index([wt_aa_col, mt_aa_col]).index.map(self.aa_pmbec_dist_series) # PCA distance
+        df['BLOSUMDist(sub)'] = df.set_index([wt_aa_col, mt_aa_col]).index.map(self.aa_blosum_subdist_series) # substitution distance
+        df['PMBECDist(sub)'] = df.set_index([wt_aa_col, mt_aa_col]).index.map(self.aa_pmbec_subdist_series) # substitution distance
 
         # substitution distance
         df['SubDist'] = df.set_index([wt_aa_col, mt_aa_col]).index.map(self.aa_emb_dist_series)
@@ -491,16 +512,81 @@ def Bootstrapping(df, x_col_dict, y_col, n_iter=1000, fillna=False):
     return results
 
 
+def BootstrappingPN(df, pred_col_dict, label_col, p_n_ratio=1.0, fillna=True, n_iter=1000):
+    """
+    Bootstrapping with stratified sampling based on positive-to-negative ratio.
+    
+    Parameters:
+    -----------
+    df : DataFrame
+        Input dataframe
+    pred_col_dict : dict
+        Dictionary of prediction columns
+    label_col : str
+        Name of the label column
+    p_n_ratio : float, default=1.0
+        Positive to negative ratio for sampling (e.g., 2.0 means 2:1 positive:negative)
+    fillna : bool, default=True
+        Whether to fill NA values
+    n_iter : int, default=1000
+        Number of bootstrap iterations
+    """
+    # Calculate sample sizes based on ratio
+    total_samples = df.shape[0]
+    n_positive = int(total_samples * p_n_ratio / (1 + p_n_ratio))
+    n_negative = total_samples - n_positive
+    
+    # Split data by label
+    positive_df = df[df[label_col] == 1]  # Assuming 1 is positive
+    negative_df = df[df[label_col] == 0]  # Assuming 0 is negative
+    
+    # Check if we have enough samples
+    if positive_df.shape[0] == 0 or negative_df.shape[0] == 0:
+        raise ValueError("Dataset must contain both positive and negative labels")
+    
+    # Bootstrap iterations
+    results = list()
+    for i in range(n_iter):
+        # Sample with replacement from each class
+        bstp_positive = positive_df.sample(n=n_positive, replace=True)
+        bstp_negative = negative_df.sample(n=n_negative, replace=True)
+        
+        # Combine samples
+        bstp_df = pd.concat([bstp_positive, bstp_negative], axis=0, ignore_index=True)
+        
+        # Shuffle the combined dataframe
+        bstp_df = bstp_df.sample(frac=1.0).reset_index(drop=True)
+        
+        # Calculate performance
+        perf_df = Performance(bstp_df, pred_col_dict, label_col, fillna=fillna)
+        perf_df = perf_df.reset_index(names=['Model'])
+        perf_df['exp'] = i + 1
+        results.append(perf_df)
+    
+    # Concatenate results
+    results = pd.concat(results, axis=0, ignore_index=True)
+    
+    return results
+
+
 # evaluating model performance
 # x_col_dict = {model_col_name: greater/less, ...}; greater / less for direction
 # if fillna, fill NA with the most negative value (0 for greater; 100 for less) 
-def Performance(df, x_col_dict, y_col, fillna=False):
+def Performance(df, x_col_dict, y_col, ppv_k_list=None, fillna=False):
     # fill NA
     if fillna:
         greater_cols = [k for k,v in x_col_dict.items() if v=='greater']
         less_cols = [k for k,v in x_col_dict.items() if v=='less']
         df[greater_cols] = df[greater_cols].fillna(0) # fill 0 for greater cols
         df[less_cols] = df[less_cols].fillna(100) # fill 100 for less cols, such as PHBR, PRIME
+
+    # ppv k list
+    if ppv_k_list is None:
+        ppv_k_list = [10, 15, 20]
+    else:
+        ppv_k_list = list(ppv_k_list)
+    ppv_k_list.append(df[y_col].sum())
+    ppv_k_list = list(sorted(set(ppv_k_list)))
 
     # performance
     result_df = dict()
@@ -510,28 +596,59 @@ def Performance(df, x_col_dict, y_col, fillna=False):
         pval = NonParamTest(tmp_df, col, y_col, alternative=comp) # p-value
         y, pred = tmp_df[y_col], tmp_df[col]
         if comp == 'less':
-            auroc = roc_auc_score(y, -pred)
-            auprc = average_precision_score(y, -pred)
-        else:
-            auroc = roc_auc_score(y, pred)
-            auprc = average_precision_score(y, pred)
+            pred = -pred
+        auroc = roc_auc_score(y, pred)
+        auprc = average_precision_score(y, pred)
+        ppv_dict = dict()
+        for k in ppv_k_list:
+            ppv_dict[f'PPV@{k}'] = precision_at_k(y, pred, k)
         result_df[col] = {
             '%NA': na_ratio,
             'P-val': pval,
             '-logP': -np.log10(pval),
             'AUROC': auroc,
-            'AUPRC': auprc
+            'AUPRC': auprc,
+            **ppv_dict
         }
 
     return pd.DataFrame(result_df).T
     
+
+def precision_at_k(y_true, y_score, k):
+    """
+    Calculate precision at top K predictions.
+    
+    Parameters:
+    -----------
+    y_true : array-like
+        True binary labels (0/1)
+    y_score : array-like
+        Prediction scores (higher = more likely positive)
+    k : int
+        Number of top predictions to consider
+    
+    Returns:
+    --------
+    float
+        Precision at K
+    """
+    # Sort by score (descending) and get top K indices
+    top_k_idx = np.argsort(y_score)[::-1][:k]
+    
+    # Get true labels for top K predictions
+    y_true_top_k = np.array(y_true)[top_k_idx]
+    
+    # Calculate precision (all predictions are "positive" in top K)
+    return np.mean(y_true_top_k)
+
 
 # barplot for the performance of MHC-I or MHC-II
 # performacne result is derived from the function Performance()
 def PerfBarPlot(perf_df, methods, metric, figfile=None, dpi=dpi, figsize=(4, 3)):
     # plot df
     plot_df = perf_df.reset_index(names='method')
-    plot_df = plot_df.melt(id_vars=['method'], value_vars=['P-val', '-logP', 'AUROC', 'AUPRC'], var_name='metric')
+    val_vars = [col for col in plot_df.columns if col not in ['%NA', 'MHC', 'method']]
+    plot_df = plot_df.melt(id_vars=['method'], value_vars=val_vars, var_name='metric')
     plot_df['method'] = plot_df['method'].apply(lambda x: '-'.join(x.split('-')[:-1]))
     
     # filtering
@@ -552,7 +669,7 @@ def PerfBarPlot(perf_df, methods, metric, figfile=None, dpi=dpi, figsize=(4, 3))
 
 # barplot for the performance of MHC-I and MHC-II
 # performacne result is derived from the function Performance()
-def TwoPerfBarPlot(mhci_df, mhcii_df, methods, metric, annot=False, palette='pastel', hue_order=None, figfile=None, dpi=dpi, figsize=(4, 3)):
+def TwoPerfBarPlot(mhci_df, mhcii_df, methods, metric, annot=False, palette='pastel', hue_order=None, ax=None, figfile=None, dpi=dpi, figsize=(4, 3)):
     # add MHC
     mhci_df['MHC'] = 'I'
     mhcii_df['MHC'] = 'II'
@@ -563,7 +680,8 @@ def TwoPerfBarPlot(mhci_df, mhcii_df, methods, metric, annot=False, palette='pas
     df = pd.concat([mhci_df.reset_index(), mhcii_df.reset_index()], axis=0, ignore_index=True)
     
     # plot df
-    plot_df = df.melt(id_vars=['MHC', 'method'], value_vars=['P-val', '-logP', 'AUROC', 'AUPRC'], var_name='metric')
+    val_vars = [col for col in df.columns if col not in ['%NA', 'MHC', 'method']]
+    plot_df = df.melt(id_vars=['MHC', 'method'], value_vars=val_vars, var_name='metric')
     plot_df['method'] = plot_df['method'].apply(lambda x: '-'.join(x.split('-')[:-1]))
     
     # filtering
@@ -571,7 +689,8 @@ def TwoPerfBarPlot(mhci_df, mhcii_df, methods, metric, annot=False, palette='pas
     plot_df = plot_df[plot_df['metric']==metric]
 
     # plot
-    fig, ax = plt.subplots(1, 1, figsize=figsize, dpi=dpi)
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=figsize, dpi=dpi)
     sns.barplot(data=plot_df, x='MHC', y='value', hue='method', hue_order=hue_order, palette=palette, ax=ax)
 
     # annot
@@ -582,6 +701,8 @@ def TwoPerfBarPlot(mhci_df, mhcii_df, methods, metric, annot=False, palette='pas
 
     ax.set_ylabel(metric)
     ax.legend(loc='lower left', bbox_to_anchor=(1, 0))
-    fig.tight_layout()
-    if figfile:
-        fig.savefig(figfile)
+
+    if ax is None:
+        fig.tight_layout()
+        if figfile:
+            fig.savefig(figfile)
