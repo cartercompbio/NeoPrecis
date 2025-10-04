@@ -2,6 +2,7 @@ import os, sys, copy, warnings
 from collections import defaultdict, OrderedDict
 import numpy as np
 import pandas as pd
+from scipy.stats import mannwhitneyu
 from sklearn.model_selection import KFold
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import GradientBoostingClassifier
@@ -11,6 +12,15 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm.auto import tqdm
 warnings.filterwarnings('ignore')
+
+dpi = 600 # plot
+
+
+def NonParamTest(df, x, y, alternative='greater'):
+    x0 = df.loc[df[y]==0, x].astype(float).to_numpy()
+    x1 = df.loc[df[y]==1, x].astype(float).to_numpy()
+    s, p = mannwhitneyu(x1, x0, alternative=alternative)
+    return p
 
 
 ### mutation-level data object for machine learning model
@@ -117,65 +127,89 @@ class CrossValidation():
         self.importance = importance
         self.eval = Evaluation()
 
-
-    def __call__(self, tasks, split_by_samples=False, n_fold=5, n_exp=10, shuffle=True, normalized=False):
+    def __call__(self, tasks, split_by_samples=False, n_fold=5, n_exp=10, shuffle=True, normalized=False, random_state=42):
         performances, importances = list(), list()
-        split_list = self.samples if split_by_samples else list(range(self.data.df.shape[0])) # data point list
+        split_list = self.samples if split_by_samples else list(range(self.data.df.shape[0]))
         
         # for each exp (different data split)
         for i in tqdm(range(n_exp)):
-            kf = KFold(n_splits=n_fold, shuffle=shuffle)
+            # Set a different seed for each experiment for reproducibility
+            exp_seed = random_state + i if random_state is not None else None
+            kf = KFold(n_splits=n_fold, shuffle=shuffle, random_state=exp_seed)
             
-            # for each fold
-            for k, (train_idx, test_idx) in tqdm(enumerate(kf.split(split_list)), total=n_fold, leave=False):
-
-                # for each task
-                for task, info in tqdm(tasks.items(), total=len(tasks), leave=False):
+            # for each task - collect predictions across all folds
+            for task, info in tqdm(tasks.items(), total=len(tasks), leave=False):
+                # Initialize lists to collect all predictions and labels across folds
+                all_test_y = []
+                all_test_pred = []
+                all_test_groups = []
+                all_importances_per_fold = []
+                
+                # for each fold
+                for k, (train_idx, test_idx) in enumerate(kf.split(split_list)):
                     # dataset
-                    train_x, train_y, train_groups, test_x, test_y, test_groups = self.data.GetSplitData(train_idx,
-                                                                                                         test_idx,
-                                                                                                         info['label'],
-                                                                                                         split_by_samples=split_by_samples,
-                                                                                                         feature_groups=info['feature_group'])
+                    train_x, train_y, train_groups, test_x, test_y, test_groups = self.data.GetSplitData(
+                        train_idx,
+                        test_idx,
+                        info['label'],
+                        split_by_samples=split_by_samples,
+                        feature_groups=info['feature_group']
+                    )
+                    
                     # training
                     if normalized:
                         mean_arr = train_x.mean(axis=0)
-                        std_arr = train_x.mean(axis=0)
+                        std_arr = train_x.std(axis=0)
+                        # Avoid division by zero
+                        std_arr = np.where(std_arr == 0, 1, std_arr)
                         train_x = (train_x - mean_arr) / std_arr
                         test_x = (test_x - mean_arr) / std_arr
-
+    
                     self.model.fit(train_x, train_y)
-                    test_pred = self.model.predict_proba(test_x)[:,1]
-
-                    # performance
-                    result = self.eval(test_y, test_pred, groups=test_groups)
-                    performance = {
-                        'fold': k,
+                    test_pred = self.model.predict_proba(test_x)[:, 1]
+    
+                    # Collect predictions and labels
+                    all_test_y.append(test_y)
+                    all_test_pred.append(test_pred)
+                    if test_groups is not None:
+                        all_test_groups.append(test_groups)
+    
+                    # importance per fold
+                    if self.importance:
+                        all_importances_per_fold.append(self.model.feature_importances_)
+    
+                # Convert to numpy arrays
+                all_test_y = np.concatenate(all_test_y)
+                all_test_pred = np.concatenate(all_test_pred)
+                all_test_groups = np.concatenate(all_test_groups) if len(all_test_groups) > 0 else None
+                
+                # Compute performance once on all predictions
+                result = self.eval(all_test_y, all_test_pred, groups=all_test_groups)
+                performance = {
+                    'task': task,
+                    'exp': i,
+                    **result,
+                }
+                performances.append(performance)
+    
+                # Average importance across folds for this experiment
+                if self.importance:
+                    avg_importance = np.mean(all_importances_per_fold, axis=0)
+                    importance = {
                         'task': task,
                         'exp': i,
-                        **result,
+                        **dict(zip(self.data.current_features, avg_importance))
                     }
-                    performances.append(performance)
-
-                    # importance
-                    if self.importance:
-                            importance = {
-                                'fold': k,
-                                'task': task,
-                                'exp': i,
-                                **dict(zip(self.data.current_features, self.model.feature_importances_))
-                            }
-                            importances.append(importance)
-
-        # aggregation
+                    importances.append(importance)
+    
+        # aggregation across experiments
         performance_df = pd.DataFrame(performances)
-        performance_df = performance_df.groupby(['task', 'exp']).mean().reset_index()
+        
         if self.importance:
             importance_df = pd.DataFrame(importances)
-            importance_df = importance_df.groupby(['task', 'exp']).mean().reset_index()
         else:
             importance_df = None
-
+    
         return performance_df, importance_df
 
 
@@ -257,12 +291,21 @@ class Evaluation():
     def __init__(self):
         return
     
-    def __call__(self, y, pred, groups=None, max_fpr=0.1, topk_list=list(range(10, 51, 5))):
+    def __call__(self, y, pred, groups=None, max_fpr=0.1, topk_list=None):
+        # top K for PPV
+        if topk_list is None:
+            topk_list = [10, 20, 30, 40, 50]
+        else:
+            topk_list = topk_list[:]
+        topk_list.append(sum(y))
+
+        # metrics
         auroc = metrics.roc_auc_score(y, pred)
         auroc_ = metrics.roc_auc_score(y, pred, max_fpr=max_fpr)
         auprc = metrics.average_precision_score(y, pred)
         topk_result = self._topk_performance(y, pred, topk_list=topk_list)
         avg_rank = self._avg_rank(y, pred, groups) if groups is not None else np.nan
+        
         result = {'AUROC': auroc, f'AUROC_{max_fpr}': auroc_, 'AUPRC': auprc, 'avgRank': avg_rank, **topk_result}
         return result
 
@@ -289,7 +332,7 @@ class Evaluation():
         
     
     def _topk_performance(self, y, pred, topk_list=list(range(10, 51, 10))):
-        total_positives = y.sum()
+        total_positives = sum(y)
         sort_idx = np.argsort(pred)
         results = dict()
         for topk in topk_list:

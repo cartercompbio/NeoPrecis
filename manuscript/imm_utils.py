@@ -691,6 +691,8 @@ def TwoPerfBarPlot(mhci_df, mhcii_df, methods, metric, annot=False, palette='pas
     # plot
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=figsize, dpi=dpi)
+    else:
+        fig = None
     sns.barplot(data=plot_df, x='MHC', y='value', hue='method', hue_order=hue_order, palette=palette, ax=ax)
 
     # annot
@@ -702,7 +704,29 @@ def TwoPerfBarPlot(mhci_df, mhcii_df, methods, metric, annot=False, palette='pas
     ax.set_ylabel(metric)
     ax.legend(loc='lower left', bbox_to_anchor=(1, 0))
 
-    if ax is None:
+    if fig is not None:
         fig.tight_layout()
         if figfile:
             fig.savefig(figfile)
+
+
+###############
+# NCI Dataset #
+###############
+
+def FilterNCI(mut_df, mhc, x_cols, y_col, dropna=False):
+    """Filter NCI dataframe."""
+    # x_cols
+    x_col_dict = {f'{col}-{mhc}': ('less' if col in ['PHBR', 'PRIME', 'ICERFIRE'] else 'greater') for col in x_cols}
+    x_col_dict = {k:v for k,v in x_col_dict.items() if k in mut_df.columns}
+
+    # filtering
+    filter_mut_df = mut_df[(mut_df['DNA_AF']>0) & (mut_df['RNA_AF']>0) & (mut_df['RNA_EXP_QRT']>1)] # filter by expression
+    filter_mut_df = filter_mut_df[filter_mut_df['Consequence']=='missense_variant'] # focus on substitutions
+    filter_mut_df = filter_mut_df.dropna(subset=[f'PHBR-{mhc}']) # drop invalid mutations
+    filter_mut_df = filter_mut_df[filter_mut_df[f'Robustness-{mhc}']>0]
+    if dropna:
+        cols = list(x_col_dict.keys()) + [y_col,]
+        filter_mut_df = filter_mut_df.dropna(subset=cols) # drop NA
+    
+    return filter_mut_df
