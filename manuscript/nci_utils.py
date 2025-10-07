@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import mannwhitneyu
 from sklearn.model_selection import KFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.feature_selection import RFECV
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.tree import plot_tree
@@ -21,6 +23,69 @@ def NonParamTest(df, x, y, alternative='greater'):
     x1 = df.loc[df[y]==1, x].astype(float).to_numpy()
     s, p = mannwhitneyu(x1, x0, alternative=alternative)
     return p
+
+
+def BuildDataset(file,
+                 abundance_features,
+                 presentation_features,
+                 recognition_features,
+                 sample_col='Patient',
+                 index_cols=['Patient', 'Mutation_Index', 'Mutation_ID'],
+                 missense_name='missense_variant'):
+    
+    df = pd.read_csv(file)
+
+    ### filtering
+    print('#Mutations')
+    print(f'Before filtering: {df.shape[0]}')
+    print(f'#CD8: {(df["CD8"]==1).sum()}')
+    print(f'#CD4: {(df["CD4"]==1).sum()}')
+    # substitution mutations
+    df = df[df['Consequence']==missense_name]
+    print(f'Drop non-SNVs: {df.shape[0]}')
+    print(f'#CD8: {(df["CD8"]==1).sum()}')
+    print(f'#CD4: {(df["CD4"]==1).sum()}')
+
+    # normalization
+    #df['PHBR-I'] = -np.log((df['PHBR-I']+1e-3)/100)
+    #df['PHBR-II'] = -np.log((df['PHBR-II']+1e-3)/100)
+    df['PHBR-I'] = 1 - df['PHBR-I']/100
+    df['PHBR-II'] = 1 - df['PHBR-II']/100
+    
+    ### data object
+    data = NeoAgData(
+        df,
+        sample_col=sample_col, # individual ID
+        index_cols=index_cols, # unique neoantigen
+        abundance_features=abundance_features,
+        presentation_features=presentation_features,
+        recognition_features=recognition_features,
+    )
+
+    return data
+
+
+def FeatureSelection(df, x_cols, y_col, eval_metric='roc_auc'):
+    X = df[x_cols].to_numpy()
+    y = df[y_col].to_numpy()
+
+    # normalization
+    scaler = StandardScaler()
+    X_norm = scaler.fit_transform(X)
+
+    # model
+    model = LogisticRegression()
+
+    # RFECV
+    rfecv = RFECV(
+        estimator=model,
+        step=1,
+        cv=4,
+        scoring=eval_metric,
+    )
+    rfecv.fit(X_norm, y)
+
+    return rfecv
 
 
 ### mutation-level data object for machine learning model

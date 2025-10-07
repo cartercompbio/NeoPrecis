@@ -440,6 +440,7 @@ def DecodeTree(s):
     # main
     parent_dict = dict()
     parent_stack = list()
+    current_node = None
     for c in s[::-1]:
         if c == '(':
             parent_stack = parent_stack[:-1]
@@ -468,10 +469,11 @@ def PerformanceBarPlot(
     method_rename_dict={},      # rename method names
     legend=True,                # w/ or w/o legend
     ncol=3,                     # legend ncol
+    fontsize=8,
     figsize=(4, 3),
     dpi=600,
     figfile=None,
-    fig = None,
+    fig=None,
     ax=None,
 ):
     if ax is None:
@@ -492,7 +494,7 @@ def PerformanceBarPlot(
     # annot
     n = len(perf_df[method_col].unique())
     for i in range(n):
-        ax.bar_label(ax.containers[i], fmt='%.3f', fontsize=8, label_type='center')
+        ax.bar_label(ax.containers[i], fmt='%.3f', fontsize=fontsize, label_type='center')
 
     # legend
     if legend:
@@ -678,7 +680,7 @@ def SurvivalCurvePlot(
     figsize=(4,3),
     dpi=600,
     figfile=None,
-    fig = None,
+    fig=None,
     ax=None,
 ):
     kmf = KaplanMeierFitter()
@@ -766,6 +768,49 @@ def HRPlot(
     ax.set_xlabel('Hazard Ratio (95% CI)')
     ax.grid(True, axis='x')
     
+    if fig is not None:
+        fig.tight_layout()
+        if figfile:
+            fig.savefig(figfile)
+
+
+def TwoGroupSurvivalCurvePlot(
+    gp1_df,
+    gp2_df,
+    event_col='OS',
+    duration_col='OS.time',
+    gp1_name='gp1',
+    gp2_name='gp2',
+    figsize=(4,3),
+    dpi=600,
+    figfile=None,
+    fig = None,
+    ax=None,
+):
+    kmf = KaplanMeierFitter()
+    cph = CoxPHFitter()
+
+    # drop NA
+    gp1_df = gp1_df.dropna(subset=[event_col, duration_col])
+    gp2_df = gp2_df.dropna(subset=[event_col, duration_col])
+
+    # log rank test
+    stat_test = logrank_test(gp1_df[duration_col], gp2_df[duration_col],
+                            event_observed_A=gp1_df[event_col], event_observed_B=gp2_df[event_col])
+    print(stat_test.test_statistic, stat_test.p_value)
+
+    # K-P curve
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=figsize, dpi=dpi)
+    kmf.fit(gp1_df[duration_col], event_observed=gp1_df[event_col], label=f'{gp1_name} (n={gp1_df.shape[0]})')
+    kmf.plot_survival_function(ax=ax)
+    kmf.fit(gp2_df[duration_col], event_observed=gp2_df[event_col], label=f'{gp2_name} (n={gp2_df.shape[0]})')
+    kmf.plot_survival_function(ax=ax)
+    ax.text(0.3, 0.6, f'log-rank P = {stat_test.p_value:.2e}', transform=ax.transAxes)
+    #ax.set_title(f'{event_col} in {cancer} by {method_rename_dict.get(metric_col, metric_col)}')
+    ax.set_ylabel('probability')
+    ax.set_xlabel('days')
+
     if fig is not None:
         fig.tight_layout()
         if figfile:

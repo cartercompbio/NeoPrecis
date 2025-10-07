@@ -494,13 +494,14 @@ class Benchmarking():
 
 # bootstrapping for evaluating model performance
 # use Performance function for evaluating models
-def Bootstrapping(df, x_col_dict, y_col, n_iter=1000, fillna=False):
+def Bootstrapping(df, x_col_dict, y_col, n_iter=1000, fillna=False, random_seed=42):
     n_sample = df.shape[0] # sample size
 
     # for each bootstrap
     results = list()
     for i in range(n_iter):
-        bstp_df = df.sample(n=n_sample, replace=True) # bootstrapping
+        seed = random_seed + i if random_seed is not None else None
+        bstp_df = df.sample(n=n_sample, replace=True, random_state=seed) # bootstrapping
         perf_df = Performance(bstp_df, x_col_dict, y_col, fillna=fillna) # performacne
         perf_df = perf_df.reset_index(names=['Model']) # reset index (rename the model column name as Model)
         perf_df['exp'] = i+1 # add column of exp. index
@@ -512,7 +513,7 @@ def Bootstrapping(df, x_col_dict, y_col, n_iter=1000, fillna=False):
     return results
 
 
-def BootstrappingPN(df, pred_col_dict, label_col, p_n_ratio=1.0, fillna=True, n_iter=1000):
+def BootstrappingPN(df, pred_col_dict, label_col, p_n_ratio=1.0, fillna=True, n_iter=1000, random_seed=42):
     """
     Bootstrapping with stratified sampling based on positive-to-negative ratio.
     
@@ -547,15 +548,17 @@ def BootstrappingPN(df, pred_col_dict, label_col, p_n_ratio=1.0, fillna=True, n_
     # Bootstrap iterations
     results = list()
     for i in range(n_iter):
+        seed = random_seed + i if random_seed is not None else None
+
         # Sample with replacement from each class
-        bstp_positive = positive_df.sample(n=n_positive, replace=True)
-        bstp_negative = negative_df.sample(n=n_negative, replace=True)
+        bstp_positive = positive_df.sample(n=n_positive, replace=True, random_state=seed)
+        bstp_negative = negative_df.sample(n=n_negative, replace=True, random_state=seed)
         
         # Combine samples
         bstp_df = pd.concat([bstp_positive, bstp_negative], axis=0, ignore_index=True)
         
         # Shuffle the combined dataframe
-        bstp_df = bstp_df.sample(frac=1.0).reset_index(drop=True)
+        bstp_df = bstp_df.sample(frac=1.0, random_state=seed).reset_index(drop=True)
         
         # Calculate performance
         perf_df = Performance(bstp_df, pred_col_dict, label_col, fillna=fillna)
