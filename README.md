@@ -174,3 +174,15 @@ The analyses for the manuscript are detailed in the `manuscript` directory. Plea
 **Please refer to the NeoPrecis manuscript for the complete list of references**
 
 ## Citation
+```bibtex
+@article{lee2025neoprecis,
+  title={NeoPrecis: Enhancing Immunotherapy Response Prediction through Integration of Qualified Immunogenicity and Clonality-Aware Neoantigen Landscapes},
+  author={Lee, Ko-Han and Sears, Timothy J. and Zanetti, Maurizio and Carter, Hannah},
+  year={2025},
+  month={jul},
+  journal={bioRxiv},
+  doi={10.1101/2025.07.23.666355},
+  url={https://doi.org/10.1101/2025.07.23.666355},
+  note={Preprint}
+}
+```
