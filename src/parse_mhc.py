@@ -111,10 +111,12 @@ def Main(input_file, out_file, genes=['A', 'B', 'C', 'DRB1', 'DQA1', 'DQB1', 'DP
 
     with open(out_file, 'w') as f:
         for gene in genes:
-            a1 = alleles[f'{gene}_1']
-            a2 = alleles[f'{gene}_2']
-            f.write(f'{a1}\n')
-            f.write(f'{a2}\n')
+            if f'{gene}_1' in alleles:
+                a1 = alleles[f'{gene}_1']
+                f.write(f'{a1}\n')
+            if f'{gene}_2' in alleles:
+                a2 = alleles[f'{gene}_2']
+                f.write(f'{a2}\n')
 
 
 if __name__=='__main__':
