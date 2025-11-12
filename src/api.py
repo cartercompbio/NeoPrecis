@@ -128,7 +128,7 @@ def ReadVCF(file):
 
 
 # read MAF file
-def ReadMAF(file):
+def ReadMAF(file, drop_canonical_col=True):
     df = pd.read_csv(file, sep='\t', comment='#', low_memory=False)
 
     # map MAF columns to VCF-like columns
@@ -138,8 +138,8 @@ def ReadMAF(file):
         'Reference_Allele': 'REF',
         'Tumor_Seq_Allele2': 'ALT',
         'Hugo_Symbol': 'SYMBOL',
-        'Variant_Classification': 'Consequence',
-        'Transcript_ID': 'Feature',
+        'Consequence': 'Consequence',
+        'Feature': 'Feature',
         'HGVSc': 'HGVSc',
         'HGVSp_Short': 'HGVSp',
         'Protein_position': 'Protein_position',
@@ -154,6 +154,10 @@ def ReadMAF(file):
     # rename columns that exist
     rename_dict = {k: v for k, v in column_map.items() if k in df.columns}
     df = df.rename(columns=rename_dict)
+
+    # drop canonical column
+    if drop_canonical_col:
+        df = df.drop(columns=['CANONICAL'])
 
     # add FILTER column if missing (default to PASS)
     if 'FILTER' not in df.columns:
