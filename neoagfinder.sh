@@ -12,7 +12,7 @@ This script runs the neoantigen immunogenicity prediction
 
 Available options:
 -c  config file [REQUIRED]
--m  VEP-annotated mutation file in VCF format [REQUIRED]
+-m  VEP-annotated mutation file in VCF or MAF format [REQUIRED]
 -a  MHC allele file (HLA-HD final result or allele list) [REQUIRED]
 -r  STAR-aligned RNA-seq BAM file [OPTIONAL]
 -g  RSEM result file of gene expression [OPTIONAL]

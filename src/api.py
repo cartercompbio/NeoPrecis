@@ -3,7 +3,7 @@
 # Description: Utility functions for the package
 # Author: Kohan
 
-import os, sys, re, subprocess, json, difflib
+import os, sys, re, subprocess, json, difflib, gzip
 import numpy as np
 import pandas as pd
 from collections import defaultdict, OrderedDict
@@ -85,8 +85,12 @@ class Blosum62():
 
 # read VCF file
 def ReadVCF(file):
-    with open(file, 'r') as f:
-        lines = f.readlines()
+    if file.endswith('.gz'):
+        with gzip.open(file, 'rt') as f:
+            lines = f.readlines()
+    else:
+        with open(file, 'r') as f:
+            lines = f.readlines()
     i = 0
     
     ### columns
@@ -119,6 +123,41 @@ def ReadVCF(file):
     ### pandas dataframe
     cols = cols[:info_idx] + cols[info_idx+1:] + annot_cols
     df = pd.DataFrame(rows, columns=cols)
+
+    return df
+
+
+# read MAF file
+def ReadMAF(file):
+    df = pd.read_csv(file, sep='\t', comment='#', low_memory=False)
+
+    # map MAF columns to VCF-like columns
+    column_map = {
+        'Chromosome': '#CHROM',
+        'Start_Position': 'POS',
+        'Reference_Allele': 'REF',
+        'Tumor_Seq_Allele2': 'ALT',
+        'Hugo_Symbol': 'SYMBOL',
+        'Variant_Classification': 'Consequence',
+        'Transcript_ID': 'Feature',
+        'HGVSc': 'HGVSc',
+        'HGVSp_Short': 'HGVSp',
+        'Protein_position': 'Protein_position',
+        'Codons': 'Codons',
+        'Amino_acids': 'Amino_acids',
+        'cDNA_position': 'cDNA_position',
+        'CDS_position': 'CDS_position',
+        'CANONICAL': 'CANONICAL',
+        'FILTER': 'FILTER'
+    }
+
+    # rename columns that exist
+    rename_dict = {k: v for k, v in column_map.items() if k in df.columns}
+    df = df.rename(columns=rename_dict)
+
+    # add FILTER column if missing (default to PASS)
+    if 'FILTER' not in df.columns:
+        df['FILTER'] = 'PASS'
 
     return df
 

@@ -3,7 +3,7 @@
 # Description: Generate mutated peptide and aligned wild-type peptide
 # Author: Kohan
 
-import sys, os, argparse
+import sys, os, argparse, gzip
 import pandas as pd
 from api import *
 
@@ -13,7 +13,7 @@ def ArgumentParser(args=None):
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     # required arguments
-    parser.add_argument('mut_file', type=str, help='Path to the VEP-annotated VCF file')
+    parser.add_argument('mut_file', type=str, help='Path to the VEP-annotated VCF or MAF file')
     parser.add_argument('out_prefix', type=str, help='Output prefix; ensure the output directory exists')
     
     # optional arguments
@@ -45,8 +45,17 @@ def AssignMutID(row):
 def Main(mut_file, out_prefix, cdna_file, cds_file,
          mhci_pept_lens=[8,9,10,11], mhcii_pept_lens=[15]):
     ### inputs
-    # load mutation file
-    mut_df = ReadVCF(mut_file)
+    # load mutation file (auto-detect format)
+    if mut_file.endswith('.gz'):
+        with gzip.open(mut_file, 'rt') as f:
+            first_line = f.readline()
+    else:
+        with open(mut_file, 'r') as f:
+            first_line = f.readline()
+    if first_line.startswith('##'):
+        mut_df = ReadVCF(mut_file)
+    else:
+        mut_df = ReadMAF(mut_file)
     assert all(x in mut_df.columns for x in ['#CHROM',
                                              'POS',
                                              'REF',
