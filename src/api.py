@@ -124,6 +124,9 @@ def ReadVCF(file):
     cols = cols[:info_idx] + cols[info_idx+1:] + annot_cols
     df = pd.DataFrame(rows, columns=cols)
 
+    ### rename columns
+    df = df.rename(columns={'Feature': 'Transcript'})
+
     return df
 
 
@@ -137,16 +140,16 @@ def ReadMAF(file, drop_canonical_col=True):
         'Start_Position': 'POS',
         'Reference_Allele': 'REF',
         'Tumor_Seq_Allele2': 'ALT',
-        'Hugo_Symbol': 'SYMBOL',
+        'SYMBOL': 'SYMBOL',
         'Consequence': 'Consequence',
-        'Feature': 'Feature',
+        'Feature': 'Transcript',
         'HGVSc': 'HGVSc',
-        'HGVSp_Short': 'HGVSp',
-        'Protein_position': 'Protein_position',
+        'HGVSp': 'HGVSp',
         'Codons': 'Codons',
         'Amino_acids': 'Amino_acids',
         'cDNA_position': 'cDNA_position',
         'CDS_position': 'CDS_position',
+        'Protein_position': 'Protein_position',
         'CANONICAL': 'CANONICAL',
         'FILTER': 'FILTER'
     }

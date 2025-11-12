@@ -25,7 +25,11 @@ def ArgumentParser(args=None):
 
 
 def AddDNAAF(mut_df, colname):
-    mut_df['DNA_AF'] = mut_df[colname].apply(lambda x: float(x.split(':')[2].split(',')[0]))
+    try:
+        mut_df['DNA_AF'] = mut_df[colname].apply(lambda x: float(x.split(':')[2].split(',')[0]))
+        mut_df['DNA_AF'] = mut_df['DNA_AF'].astype(float)
+    except Exception as e:
+        mut_df['DNA_AF'] = np.nan
     return mut_df
 
 

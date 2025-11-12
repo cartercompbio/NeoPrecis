@@ -3,7 +3,7 @@
 # Description: Generate mutated peptide and aligned wild-type peptide
 # Author: Kohan
 
-import sys, os, argparse, gzip
+import sys, os, argparse, gzip, re
 import pandas as pd
 from api import *
 
@@ -31,14 +31,18 @@ def ArgumentParser(args=None):
 
 # assign mutation ID for each row
 def AssignMutID(row):
-    try:
-        mut = row['HGVSp'].split(':')[1]
-    except Exception as e:
+    hgvsp = row['HGVSp']
+    if re.match(r'.*:p\.', hgvsp):  # Match any chars followed by ':p.'
+        mut = hgvsp.split(':')[1]
+    elif re.match(r'^p\.', hgvsp):  # Match strings starting with 'p.'
+        mut = hgvsp
+    else:
         mut_aa = row['Amino_acids'].split('/')
+        pos = row['Protein_position'].split('/')[0]  # if length provided (position/length)
         if len(mut_aa) == 2:
-            mut = f"p.{mut_aa[0]}{row['Protein_position']}{mut_aa[1]}"
+            mut = f"p.{mut_aa[0]}{pos}{mut_aa[1]}"
         else:
-            mut = f"p.{row['Protein_position']}{mut_aa[0]}"
+            mut = f"p.{pos}{mut_aa[0]}"
     return f'{row["SYMBOL"]}:{mut}'
 
 
@@ -61,7 +65,7 @@ def Main(mut_file, out_prefix, cdna_file, cds_file,
                                              'REF',
                                              'ALT',
                                              'FILTER',
-                                             'Feature',
+                                             'Transcript',
                                              'Consequence',
                                              'cDNA_position',
                                              'CDS_position',
@@ -97,12 +101,12 @@ def Main(mut_file, out_prefix, cdna_file, cds_file,
     pepgen = PepGen(cdna_file, cds_file)
     wt_pept_list, mt_pept_list = list(), list()
     for idx, mutation in mut_df.iterrows():
-        wt_pept, mt_pept = pepgen(mutation['Feature'], mutation['CDS_position'], mutation['Codons'], mutation['Consequence'], length=max_len)
+        wt_pept, mt_pept = pepgen(mutation['Transcript'], mutation['CDS_position'], mutation['Codons'], mutation['Consequence'], length=max_len)
         wt_pept_list.append(wt_pept)
         mt_pept_list.append(mt_pept)
     mut_df['WT_seq'] = wt_pept_list
     mut_df['MT_seq'] = mt_pept_list
-    mut_df = mut_df.reset_index(drop=True)
+    mut_df = mut_df.reset_index(names=['original_idx'])
     mut_df.to_csv(f'{out_prefix}.mut.csv')
 
     ### WT and MT epitopes
