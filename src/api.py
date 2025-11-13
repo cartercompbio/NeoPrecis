@@ -652,7 +652,7 @@ def MHCIAlleleTransform(allele, From='mixmhcpred', To='netmhcpan'):
     if To == 'mixmhcpred':
         return f'{gene}{group}{prot}'
     elif To == 'netmhcpan':
-        return f'HLA-{gene}{group}:{prot}'
+        return f'HLA-{gene}*{group}:{prot}'
     else:
         return f'{gene}*{group}:{prot}'
 
