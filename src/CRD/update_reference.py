@@ -71,6 +71,8 @@ def Main(ref_file, std_alleles, pred_alleles, peptide_file, pred_exec, bind_thrs
         aa_list = ref['aa_list'].asstr()[:].tolist()
         aa_blosum_encodes = ref['aa_blosum_encodes'][:]
         aa_blosum_pc2_encodes = ref['aa_blosum_pc2_encodes'][:]
+        aa_pmbec_encodes = ref['aa_pmbec_encodes'][:]
+        aa_pmbec_pc2_encodes = ref['aa_pmbec_pc2_encodes'][:]
         allele_list = ref['allele_list'].asstr()[:].tolist()
         position_factors = ref['position_factors'][:]
         motifs = ref['motifs'][:]
@@ -85,6 +87,8 @@ def Main(ref_file, std_alleles, pred_alleles, peptide_file, pred_exec, bind_thrs
         f.create_dataset('aa_list', data=aa_list)
         f.create_dataset('aa_blosum_encodes', data=aa_blosum_encodes)
         f.create_dataset('aa_blosum_pc2_encodes', data=aa_blosum_pc2_encodes)
+        f.create_dataset('aa_pmbec_encodes', data=aa_pmbec_encodes)
+        f.create_dataset('aa_pmbec_pc2_encodes', data=aa_pmbec_pc2_encodes)
         f.create_dataset('allele_list', data=allele_list)
         f.create_dataset('position_factors', data=position_factors)
         f.create_dataset('motifs', data=motifs)
