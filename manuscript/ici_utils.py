@@ -1,17 +1,10 @@
-import os, sys, json, warnings
 import numpy as np
 import pandas as pd
-from tqdm.auto import tqdm
-
-from scipy.stats import pearsonr, spearmanr, zscore, mannwhitneyu, ttest_ind
+from scipy.stats import mannwhitneyu
 from sklearn.metrics import roc_auc_score, average_precision_score, roc_curve, auc
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import seaborn as sns
-from venn import venn
 from lifelines import KaplanMeierFitter, CoxPHFitter
 from lifelines.statistics import logrank_test
 from cliffs_delta import cliffs_delta
@@ -88,9 +81,11 @@ def MetricPerformance(
     verbose=False,
 ):
     # filtering
-    if verbose: print('#Samples =', sample_df.shape[0])
+    if verbose:
+        print('#Samples =', sample_df.shape[0])
     df = sample_df.dropna(subset=[label_col]+metric_cols, ignore_index=True)
-    if verbose: print('#Samples after dropping NA =', df.shape[0])
+    if verbose:
+        print('#Samples after dropping NA =', df.shape[0])
 
     # check groups
     cols = df.columns.tolist() # all columns
@@ -684,7 +679,7 @@ def SurvivalCurvePlot(
     ax=None,
 ):
     kmf = KaplanMeierFitter()
-    cph = CoxPHFitter()
+    #cph = CoxPHFitter()
 
     # df
     srv_df = sample_df[(sample_df[cancer_col]==cancer)].dropna(subset=[event_col, duration_col])
@@ -788,7 +783,7 @@ def TwoGroupSurvivalCurvePlot(
     ax=None,
 ):
     kmf = KaplanMeierFitter()
-    cph = CoxPHFitter()
+    #cph = CoxPHFitter()
 
     # drop NA
     gp1_df = gp1_df.dropna(subset=[event_col, duration_col])

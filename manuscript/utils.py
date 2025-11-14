@@ -1,9 +1,21 @@
-import os, sys, re, warnings
+import os
+import sys
+import json
 from collections import defaultdict, OrderedDict
 import numpy as np
 import pandas as pd
-from tqdm.notebook import tqdm
 import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy.stats import mannwhitneyu, chi2_contingency
+import warnings
+warnings.filterwarnings("ignore")
+
+project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_dir)
+from neoprecis import SubCRD
+
+
+'''
 from matplotlib.gridspec import GridSpec
 from matplotlib.colors import ListedColormap
 from matplotlib.patches import Patch
@@ -11,12 +23,7 @@ from matplotlib.lines import Line2D
 import seaborn as sns
 from scipy.stats import ttest_ind, mannwhitneyu, chi2_contingency
 from sklearn import metrics
-
-project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_dir)
-from src.api import *
-
-warnings.filterwarnings("ignore")
+'''
 
 ######################
 ###### Blosum 62 #####
@@ -67,11 +74,16 @@ def NonParamTest(df, x, y, alternative='greater'):
     return p
 
 def Chi2Test(arr_a, arr_b):
-    table = np.zeros((2,2))
-    table[0][0] = np.sum((arr_a==False) & (arr_b==False))
-    table[0][1] = np.sum((arr_a==False) & (arr_b==True))
-    table[1][0] = np.sum((arr_a==True) & (arr_b==False))
-    table[1][1] = np.sum((arr_a==True) & (arr_b==True))
+    # ensure boolean masks (works for numpy arrays, pandas Series, lists, etc.)
+    a_mask = np.asarray(arr_a).astype(bool)
+    b_mask = np.asarray(arr_b).astype(bool)
+
+    table = np.zeros((2,2), dtype=int)
+    table[0][0] = np.sum(~a_mask & ~b_mask)
+    table[0][1] = np.sum(~a_mask & b_mask)
+    table[1][0] = np.sum(a_mask & ~b_mask)
+    table[1][1] = np.sum(a_mask & b_mask)
+
     result = chi2_contingency(table)
     return result.pvalue
 
@@ -110,8 +122,10 @@ def ExtractSubstitution(file, wt_seq_col='WT_epitope', mt_seq_col='MT_epitope', 
     subs = list()
     for idx, row in df.iterrows():
         wt, mt, wt_core, mt_core = row[wt_seq_col], row[mt_seq_col], row[wt_core_col], row[mt_core_col]
-        if type(wt) == float: continue # check if WT exists
-        if len(wt) != len(mt): continue # check if substitution
+        if type(wt) is float:
+            continue # check if WT exists
+        if len(wt) != len(mt):
+            continue # check if substitution
 
         # seq to core index of MT
         idx_map_dict = MapSeqToCorePos(mt, mt_core)
@@ -120,7 +134,8 @@ def ExtractSubstitution(file, wt_seq_col='WT_epitope', mt_seq_col='MT_epitope', 
         count = 0
         for i in range(len(mt)):
             if wt[i] != mt[i]:
-                if i not in idx_map_dict: continue # mutation is not in core
+                if i not in idx_map_dict:
+                    continue # mutation is not in core
                 pos, wt_aa, mt_aa = idx_map_dict[i], wt[i], mt[i]
                 count += 1
 
@@ -283,7 +298,7 @@ def LoadLukszaModel(file):
 # Substitution scoring
 def SubScoring(mismatch_df, pos_weights, sub_weights, specific_allele=False, specific_length=False):
     # cross reactivity object
-    CR = CrossReactivity(pos_weights, sub_weights, specific_allele=specific_allele, specific_length=specific_length)
+    CR = SubCRD(pos_weights, sub_weights, specific_allele=specific_allele, specific_length=specific_length)
 
     # score
     scores = list()

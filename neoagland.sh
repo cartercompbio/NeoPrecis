@@ -62,7 +62,7 @@ echo
 # Assign variables
 REAL_PATH=$(realpath $0)
 SRC_DIR=$(dirname ${REAL_PATH})
-SRC_DIR=${SRC_DIR}/src
+SRC_DIR=${SRC_DIR}/neoprecis
 
 ### NP-Landscape calculation
 echo "

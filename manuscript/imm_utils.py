@@ -1,29 +1,28 @@
 # benchmarking and interpreting the PeptCRD model
 
-import os, sys, re, json, warnings, h5py
-from collections import defaultdict, Counter, OrderedDict
+import os
+import sys
+import h5py
+from collections import defaultdict
 import torch
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.colors import to_rgba
 import seaborn as sns
-from tqdm.auto import tqdm
 from scipy.spatial.distance import pdist, squareform
-from scipy.stats import pearsonr
 from scipy.optimize import least_squares
 from scipy.linalg import svd
 from sklearn.metrics import roc_auc_score, average_precision_score
-from sklearn.decomposition import PCA
 from adjustText import adjust_text
-warnings.filterwarnings('ignore')
+import warnings
+from .utils import NonParamTest
 
 project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_dir)
-from src.api import *
-from src.CRD.model import *
-from utils import *
+from neoprecis.CRD.model import CLF
 
+warnings.filterwarnings('ignore')
 dpi = 600 # plot
 
 ###################
@@ -339,7 +338,7 @@ class ModelInterpretation():
     # determine the probability threshold for anchor residues
     # min(max residue of each anchor position)
     def _determine_anchor_thrs(self, anchor_pos_series):
-        anchor_pos_list = anchor_pos_series[anchor_pos_series == True].index.tolist() # anchor positions
+        anchor_pos_list = anchor_pos_series[anchor_pos_series].index.tolist() # anchor positions
         max_prob_list = list()
         for pos, allele in anchor_pos_list: # for each anchor position
             allele_idx = self.ref_allele_list.index(allele) # allele idx

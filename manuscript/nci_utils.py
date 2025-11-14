@@ -1,5 +1,6 @@
-import os, sys, copy, warnings
-from collections import defaultdict, OrderedDict
+import os
+import warnings
+from collections import defaultdict
 import numpy as np
 import pandas as pd
 from scipy.stats import mannwhitneyu
@@ -7,7 +8,6 @@ from sklearn.model_selection import KFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import RFECV
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.tree import plot_tree
 from sklearn import metrics
 import matplotlib.pyplot as plt
@@ -291,8 +291,10 @@ class IsolatedValidation():
 
     
     def __call__(self, model, tasks, out_dir, importance=True, tree=True, normalized=False):
-        if not os.path.isdir(out_dir): os.mkdir(out_dir)
-        if not os.path.isdir(f'{out_dir}/interpretation'): os.mkdir(f'{out_dir}/interpretation')
+        if not os.path.isdir(out_dir):
+            os.mkdir(out_dir)
+        if not os.path.isdir(f'{out_dir}/interpretation'):
+            os.mkdir(f'{out_dir}/interpretation')
 
         pred_df, results, importances = pd.DataFrame(), dict(), dict()
         for name, info in tasks.items():
@@ -316,7 +318,8 @@ class IsolatedValidation():
             # model interpretation
             name = name.replace('-', '__').replace('+', '_')
             plot_dir = f'{out_dir}/interpretation/{name}'
-            if not os.path.isdir(plot_dir): os.mkdir(plot_dir)
+            if not os.path.isdir(plot_dir):
+                os.mkdir(plot_dir)
             features = self.train_data.current_features
             if importance:
                 importances[name] = dict(zip(features, model.feature_importances_))
@@ -382,7 +385,8 @@ class Evaluation():
             tmp_idx = [i for i, g in enumerate(groups) if g == group]
             tmp_pred = pred[tmp_idx]
             tmp_y = y[tmp_idx]
-            if 1 not in tmp_y: continue
+            if 1 not in tmp_y:
+                continue
             tmp_ranks = self._rank(tmp_y, tmp_pred)
             ranks.append(np.mean(tmp_ranks))
         return np.mean(ranks)
