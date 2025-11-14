@@ -16,7 +16,7 @@ from scipy.linalg import svd
 from sklearn.metrics import roc_auc_score, average_precision_score
 from adjustText import adjust_text
 import warnings
-from .utils import NonParamTest
+from utils import NonParamTest
 
 project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_dir)
