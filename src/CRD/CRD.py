@@ -5,7 +5,7 @@
 
 import os, sys, json, yaml, difflib, warnings
 import numpy as np
-from model import *
+from .model import *
 warnings.filterwarnings("ignore")
 
 

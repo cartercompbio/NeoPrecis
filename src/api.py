@@ -3,7 +3,12 @@
 # Description: Utility functions for the package
 # Author: Kohan
 
-import os, sys, re, subprocess, json, difflib, gzip
+import os
+import sys
+import re
+import subprocess
+import json
+import gzip
 import numpy as np
 import pandas as pd
 from collections import defaultdict, OrderedDict
@@ -18,14 +23,13 @@ src_dir = os.path.dirname(os.path.abspath(__file__))
 allele_code_dict = json.load(open(f'{src_dir}/allele_code_mapping.json', 'r'))
 
 # import peptCRD module
-sys.path.append(f'{src_dir}/CRD')
 from CRD import SubCRD, PeptCRD
 
 # check and import foreignness module
 if os.path.isdir(f'{src_dir}/NeoantigenEditing'):
     foreignness_aval = True
     sys.path.append(f'{src_dir}/NeoantigenEditing')
-    from foreignness import Foreignness
+    from foreignness import Foreignness # pyright: ignore[reportMissingImports]; import from NeoantigenEditing
 else:
     foreignness_aval = False
 

@@ -6,7 +6,7 @@ import torch, h5py
 import torch.nn as nn
 import pytorch_lightning as pl
 from torchmetrics.classification import BinaryAUROC, BinaryAveragePrecision
-import architecture
+from . import architecture
 
 
 class PeptideTrainingModule(pl.LightningModule):

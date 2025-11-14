@@ -3,9 +3,17 @@
 # Description: update motif reference
 # Author: Kohan
 
-import os, sys, shutil, h5py, argparse
+import os
+import sys
+import shutil
+import h5py
+import argparse
+from pathlib import Path
 import logomaker as lm
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import numpy as np
+
+# Add parent directory to path to import api module
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from api import *
 
 blosum = Blosum62()
@@ -51,12 +59,54 @@ def GetMotifs(alleles, pred_df, bind_thrs):
     return np.array(motif_list), np.array(pos_fac_list)
 
 
+def UpdateRef(ref_file, new_alleles, new_motifs, new_pos_facs, sort_alleles=False):
+    # load all datasets dynamically
+    data = {}
+    with h5py.File(ref_file, 'r') as ref:
+        for key in ref.keys():
+            if h5py.check_string_dtype(ref[key].dtype): # string data
+                data[key] = ref[key].asstr()[:].tolist()
+            else:  # Numeric data
+                data[key] = ref[key][:]
+    
+    # Update only the specific keys you need
+    data['allele_list'] = data['allele_list'] + new_alleles
+    data['motifs'] = np.vstack([data['motifs'], new_motifs])
+    data['position_factors'] = np.vstack([data['position_factors'], new_pos_facs])
+    
+    # Sort if requested
+    if sort_alleles:
+        sorted_indices = np.argsort(data['allele_list'])
+        data['allele_list'] = [data['allele_list'][i] for i in sorted_indices]
+        data['motifs'] = data['motifs'][sorted_indices]
+        data['position_factors'] = data['position_factors'][sorted_indices]
+    
+    # Save all datasets
+    tmp_h5_file = str(Path(ref_file).parent / f".tmp_{Path(ref_file).name}")
+    try:
+        with h5py.File(tmp_h5_file, 'w') as f:
+            for key, value in data.items():
+                if isinstance(value, list) and len(value) > 0 and isinstance(value[0], str):
+                    # String list
+                    f.create_dataset(key, data=np.array(value, dtype=h5py.string_dtype()))
+                else:
+                    # Numeric array
+                    f.create_dataset(key, data=value)
+        
+        shutil.move(tmp_h5_file, ref_file)
+    
+    except Exception as e:
+        if Path(tmp_h5_file).exists():
+            Path(tmp_h5_file).unlink()
+        raise e
+
+
 def Main(ref_file, std_alleles, pred_alleles, peptide_file, pred_exec, bind_thrs):
-    if len(std_alleles) == 0: return
+    if len(std_alleles) == 0:
+        return
 
     # tmp files
     tmp_pred_file = 'mhc_preds.txt'
-    tmp_h5_file = 'tmp_ref.h5'
 
     # prediction
     RunNetMHCpan(','.join(pred_alleles), peptide_file, tmp_pred_file, exe_path=pred_exec)
@@ -66,36 +116,8 @@ def Main(ref_file, std_alleles, pred_alleles, peptide_file, pred_exec, bind_thrs
     # motifs and position factors
     new_motifs, new_pos_facs = GetMotifs(pred_alleles, pred_df, bind_thrs)
 
-    # load previous h5
-    with h5py.File(ref_file, 'r') as ref:
-        aa_list = ref['aa_list'].asstr()[:].tolist()
-        aa_blosum_encodes = ref['aa_blosum_encodes'][:]
-        aa_blosum_pc2_encodes = ref['aa_blosum_pc2_encodes'][:]
-        aa_pmbec_encodes = ref['aa_pmbec_encodes'][:]
-        aa_pmbec_pc2_encodes = ref['aa_pmbec_pc2_encodes'][:]
-        allele_list = ref['allele_list'].asstr()[:].tolist()
-        position_factors = ref['position_factors'][:]
-        motifs = ref['motifs'][:]
-    
-    # add new motifs
-    allele_list = allele_list + std_alleles
-    motifs = np.vstack([motifs, new_motifs])
-    position_factors = np.vstack([position_factors, new_pos_facs])
-
-    # save new h5
-    with h5py.File(tmp_h5_file, 'w') as f:
-        f.create_dataset('aa_list', data=aa_list)
-        f.create_dataset('aa_blosum_encodes', data=aa_blosum_encodes)
-        f.create_dataset('aa_blosum_pc2_encodes', data=aa_blosum_pc2_encodes)
-        f.create_dataset('aa_pmbec_encodes', data=aa_pmbec_encodes)
-        f.create_dataset('aa_pmbec_pc2_encodes', data=aa_pmbec_pc2_encodes)
-        f.create_dataset('allele_list', data=allele_list)
-        f.create_dataset('position_factors', data=position_factors)
-        f.create_dataset('motifs', data=motifs)
-    
-    # replace previous h5
-    os.remove(ref_file)
-    shutil.move(tmp_h5_file, ref_file)
+    # update reference using UpdateRef function
+    UpdateRef(ref_file, std_alleles, new_motifs, new_pos_facs, sort_alleles=False)
 
 
 def GetNewAlleles(mhc_obj, aval_alleles, mhc, predictor, exec_path):
