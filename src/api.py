@@ -15,6 +15,7 @@ from collections import defaultdict, OrderedDict
 from scipy.stats import norm
 from Bio import SeqIO
 from Bio.Seq import translate
+from .CRD import SubCRD, PeptCRD # CRD module
 import warnings
 warnings.filterwarnings('ignore')
 src_dir = os.path.dirname(os.path.abspath(__file__))
@@ -22,13 +23,10 @@ src_dir = os.path.dirname(os.path.abspath(__file__))
 # load allele code mapping
 allele_code_dict = json.load(open(f'{src_dir}/allele_code_mapping.json', 'r'))
 
-# import peptCRD module
-from CRD import SubCRD, PeptCRD
-
 # check and import foreignness module
 if os.path.isdir(f'{src_dir}/NeoantigenEditing'):
     foreignness_aval = True
-    sys.path.append(f'{src_dir}/NeoantigenEditing')
+    sys.path.insert(0, f'{src_dir}/NeoantigenEditing')
     from foreignness import Foreignness # pyright: ignore[reportMissingImports]; import from NeoantigenEditing
 else:
     foreignness_aval = False
@@ -273,7 +271,8 @@ class MHC():
                 mixmhcpred_list.append(f'{gene}_{group}_{prot}')
         # DP, DQ
         for gene in ['DP', 'DQ']:
-            if (f'{gene}A' not in genes) or (f'{gene}B' not in genes): continue
+            if (f'{gene}A' not in genes) or (f'{gene}B' not in genes):
+                continue
             for gene_a, group_a, prot_a in allele_dict[f'{gene}A']:
                 for gene_b, group_b, prot_b in allele_dict[f'{gene}B']:
                     standard_list.append(f'{gene_a}*{group_a}:{prot_a}_{gene_b}*{group_b}:{prot_b}')
@@ -361,7 +360,7 @@ class PepGen():
             return False
         
         # get mutation (codon)
-        if type(codon) != str:
+        if type(codon) is not str:
             print("\tError: Codon is not available")
             return False 
         
@@ -534,7 +533,8 @@ def ReadNetMHCpan(file):
         # locate the line of column name
         while (idx < num_lines-1) and ((not lines[idx].startswith('---')) | (not lines[idx+1].startswith(' Pos'))):
             idx += 1
-        if idx == num_lines-1: break
+        if idx == num_lines-1:
+            break
         col_names = lines[idx+1].strip().split()
         num_cols = len(col_names)
         
@@ -607,7 +607,8 @@ def RunMixMHCpred(alleles, peptide_file, output_file,
         '-i', peptide_file,
         '-o', output_file
     ]
-    if context_cmd: cmd.append('--no_context')
+    if context_cmd:
+        cmd.append('--no_context')
     subprocess.run(' '.join(cmd), shell=True)
 
 
@@ -802,7 +803,7 @@ class BestEpi():
 
             # best aligned WT
             if best_mt is not None:
-                wt_pepts = [pept_df.loc[best_idx, col] for col in self.pept_wt_cols if type(pept_df.loc[best_idx, col])==str]
+                wt_pepts = [pept_df.loc[best_idx, col] for col in self.pept_wt_cols if type(pept_df.loc[best_idx, col]) is str]
                 wt_pepts = list(set(wt_pepts))
                 if match_pept_length: # len(MT) == len(WT)
                     wt_pepts = [pept for pept in wt_pepts if len(pept) == len(best_mt)]
@@ -1054,7 +1055,7 @@ class EpiMetrics():
 
     def _foreignness(self, df):
         pepts = df[self.mt_seq_col].tolist()
-        pepts = ['' if type(pept)==float else ''.join(pept.split('-')) for pept in pepts]
+        pepts = ['' if type(pept) is float else ''.join(pept.split('-')) for pept in pepts]
         scores = self.Foreignness(pepts)
         return scores
 

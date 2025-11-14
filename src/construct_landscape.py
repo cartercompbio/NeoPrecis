@@ -3,10 +3,11 @@
 # Description: Construct neoantigen landscape and compute tumor-centric scores
 # Author: Kohan
 
-import os, sys, argparse
+import argparse
 from collections import defaultdict
 import numpy as np
 import pandas as pd
+
 
 def ArgumentParser(args=None):
     parser = argparse.ArgumentParser(prog='Construct neoantigen landscape and compute tumor-centric scores',

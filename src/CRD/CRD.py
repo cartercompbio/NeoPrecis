@@ -3,9 +3,13 @@
 # Description: Cross-reactivity distance models
 # Author: Kohan
 
-import os, sys, json, yaml, difflib, warnings
+import yaml
+import difflib
+import h5py
 import numpy as np
-from .model import *
+import torch
+from .model import CLF
+import warnings
 warnings.filterwarnings("ignore")
 
 
@@ -45,9 +49,9 @@ class PeptCRD():
     def score_peptide(self, ref_seq, alt_seq, allele, alt_bind_score):
         # check sequence
         out_dim = self.pept_emb_dim*2 + 4
-        if (type(alt_seq) == float) | (alt_seq == ''):
+        if (type(alt_seq) is float) | (alt_seq == ''):
             return np.full((out_dim,), np.nan)
-        if (type(ref_seq) == float) | (ref_seq == ''):
+        if (type(ref_seq) is float) | (ref_seq == ''):
             return np.full((out_dim,), np.nan)
         if len(ref_seq) != len(alt_seq):
             return np.full((out_dim,), np.nan)
@@ -91,7 +95,8 @@ class SubCRD():
         if self.specific_allele:
             if allele not in pos_weights:
                 gene = allele.split('*')[0]
-                if len(gene) > 2: gene = gene[:2]
+                if len(gene) > 2:
+                    gene = gene[:2]
                 pos_weight = pos_weights[gene][f'P{pos+1}']
             else:
                 pos_weight = pos_weights[allele][f'P{pos+1}']
@@ -113,9 +118,9 @@ class SubCRD():
     # score peptide sequence
     def score_peptide(self, ref_seq, alt_seq, allele):
         # check sequence
-        if (type(alt_seq) == float) | (alt_seq == ''):
+        if (type(alt_seq) is float) | (alt_seq == ''):
             return np.nan
-        if (type(ref_seq) == float) | (ref_seq == ''):
+        if (type(ref_seq) is float) | (ref_seq == ''):
             return np.nan
         if len(ref_seq) == len(alt_seq):
             mismatches = self._get_missense_mismatch(ref_seq, alt_seq)

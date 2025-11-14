@@ -14,7 +14,9 @@ import numpy as np
 
 # Add parent directory to path to import api module
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from api import *
+from api import Blosum62
+from api import MHC, LoadAllowedAlleles, MHCIAlleleTransform, MHCIIAlleleTransform
+from api import RunNetMHCpan, ReadNetMHCpan
 
 blosum = Blosum62()
 sub_matrix = blosum._ordered(blosum.matrix)

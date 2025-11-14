@@ -3,9 +3,10 @@
 # Description: Predict immunogenicity using the multi-dimensional integrated model (DNA_AF, RNA_AF, RNA_EXP_QRT, PHBR, NP-Immuno (previous name: Immgen))
 # Author: Kohan
 
-import os, sys, argparse
+import argparse
 import numpy as np
 import pandas as pd
+
 
 def ArgumentParser(args=None):
     parser = argparse.ArgumentParser(prog='Predict immunogenicity using the multi-dimensional integrated model',

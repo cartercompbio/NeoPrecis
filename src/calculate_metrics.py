@@ -3,8 +3,10 @@
 # Description: Compute functional metrics for mutated peptides
 # Author: Kohan
 
-import os, sys, argparse
-from api import *
+import os
+import argparse
+import pandas as pd
+from api import MHC, BestEpi, EpiMetrics
 
 
 def ArgumentParser(args=None):
@@ -38,10 +40,11 @@ def Main(mut_file, peptide_prefix, mhc, alleles, mhc_bind_file, bind_threshold, 
     epi_metrics_obj = EpiMetrics(mhc, alleles)      # EpiMetrics object
    
     ### compute metrics
-    result_df, agg_df = dict(), dict()
+    result_df = dict()
     for idx, mut in mut_df.iterrows():
         # best epitope for each allele
-        if not os.path.isfile(f'{peptide_prefix}{idx}.csv'): continue
+        if not os.path.isfile(f'{peptide_prefix}{idx}.csv'):
+            continue
         pept_df = pd.read_csv(f'{peptide_prefix}{idx}.csv')
         best_epi_df = best_epi_obj(pept_df)
         # metrics for each best epitope

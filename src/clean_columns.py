@@ -3,7 +3,7 @@
 # Description: Remove unnecessary columns and rename columns
 # Author: Kohan
 
-import os, sys
+import sys
 import pandas as pd
 
 file = sys.argv[1]

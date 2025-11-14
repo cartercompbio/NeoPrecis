@@ -3,8 +3,8 @@
 # Description: Parse MHC alleles for each sample
 # Author: Kohan
 
+import argparse
 
-import os, sys, argparse
 
 def ArgumentParser(args=None):
     parser = argparse.ArgumentParser(prog='Parse MHC alleles from results of HLA typing',
@@ -27,7 +27,8 @@ def ParsePolysolver(file, genes=['A','B','C']):
     for line in lines:
         line = line.split('_')
         gene = line[1].upper()
-        if gene not in genes: continue
+        if gene not in genes:
+            continue
         allele = f'{gene}*{line[2]}:{line[3]}'
         if f'{gene}_1' in alleles:
             alleles[f'{gene}_2'] = allele
@@ -50,7 +51,8 @@ def ParseHLAHD(file, genes=['A', 'B', 'C', 'DRB1', 'DQA1', 'DQB1', 'DPA1', 'DPB1
         gene = line[0]
 
         # check gene
-        if gene not in genes: continue
+        if gene not in genes:
+            continue
 
         # allele 1
         candidate = line[1]

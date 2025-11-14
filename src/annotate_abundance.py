@@ -3,9 +3,10 @@
 # Description: Append abundance-related metrics, including DNA_AF, RNA_AF, RNA_EXP
 # Author: Kohan
 
-import sys, os, argparse
+import os
+import argparse
+import numpy as np
 import pandas as pd
-from api import *
 
 
 def ArgumentParser(args=None):
@@ -28,7 +29,7 @@ def AddDNAAF(mut_df, colname):
     try:
         mut_df['DNA_AF'] = mut_df[colname].apply(lambda x: float(x.split(':')[2].split(',')[0]))
         mut_df['DNA_AF'] = mut_df['DNA_AF'].astype(float)
-    except Exception as e:
+    except Exception:
         mut_df['DNA_AF'] = np.nan
     return mut_df
 

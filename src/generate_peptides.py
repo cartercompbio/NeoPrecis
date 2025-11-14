@@ -3,9 +3,13 @@
 # Description: Generate mutated peptide and aligned wild-type peptide
 # Author: Kohan
 
-import sys, os, argparse, gzip, re
+import sys
+import os
+import argparse
+import gzip
+import re
 import pandas as pd
-from api import *
+from api import ReadVCF, ReadMAF, PepGen, EpiGen, WritePeptideTXT
 
 
 def ArgumentParser(args=None):
@@ -121,7 +125,7 @@ def Main(mut_file, out_prefix, cdna_file, cds_file,
             tmp_df = epigen(length)
             epi_df = pd.concat([epi_df, tmp_df], axis=0)
         if epi_df.shape[0] == 0:
-            print(f'Skip: no distinct mutated peptides')
+            print('Skip: no distinct mutated peptides')
             continue
         epi_df.to_csv(f'{out_prefix}.peptide{idx}.csv', index=False)
         # output epitopes for MHC-I prediction

@@ -2,7 +2,8 @@
 # Description: peptide-based model
 # Author: Kohan
 
-import torch, h5py
+import h5py
+import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 from torchmetrics.classification import BinaryAUROC, BinaryAveragePrecision
@@ -119,7 +120,7 @@ class CRD(PeptideTrainingModule):
     def predict_step(self, batch: list, batch_idx: int) -> torch.tensor:
         peptides, features, ys = batch
         distances = self._calculate_CRD(peptides, features)
-        loss = self._compute_loss(distances)
+        #loss = self._compute_loss(distances)
         return distances
     
     def _calculate_CRD(self, peptides, features):

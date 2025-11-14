@@ -3,10 +3,12 @@
 # Description: Run MHC binding prediction
 # Author: Kohan
 
-import sys, os, argparse
-import numpy as np
+import sys
+import os
+import argparse
 import pandas as pd
-from api import *
+from api import MHC, LoadAllowedAlleles, MHCIAlleleTransform, MHCIIAlleleTransform
+from api import RunNetMHCpan, RunMixMHCpred, ReadNetMHCpan, ReadMixMHCpred
 
 
 def ArgumentParser(args=None):
@@ -64,7 +66,7 @@ def RunMHCPred(mhc_class: str, predictor: str, exec_path: str, alleles: list, pe
         context_cmd = True if mhc_class == 'ii' else False
         sep = ' ' if mhc_class == 'ii' else ','
         RunMixMHCpred(
-            set.join(alleles),
+            sep.join(alleles),
             peptide_file,
             out_file,
             context_cmd=context_cmd,
