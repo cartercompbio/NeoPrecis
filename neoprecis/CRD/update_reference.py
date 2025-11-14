@@ -12,11 +12,30 @@ from pathlib import Path
 import logomaker as lm
 import numpy as np
 
-# Add parent directory to path to import api module
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from api import Blosum62
-from api import MHC, LoadAllowedAlleles, MHCIAlleleTransform, MHCIIAlleleTransform
-from api import RunNetMHCpan, ReadNetMHCpan
+# Support both package import and direct script execution
+try:
+    # When imported as module (python -m neoprecis.CRD.update_reference)
+    from ..api import (
+        Blosum62,
+        MHC,
+        LoadAllowedAlleles,
+        MHCIAlleleTransform,
+        MHCIIAlleleTransform,
+        RunNetMHCpan,
+        ReadNetMHCpan,
+    )
+except ImportError:
+    # Fallback for direct execution (python neoprecis/CRD/update_reference.py)
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+    from api import (
+        Blosum62,
+        MHC,
+        LoadAllowedAlleles,
+        MHCIAlleleTransform,
+        MHCIIAlleleTransform,
+        RunNetMHCpan,
+        ReadNetMHCpan,
+    )
 
 blosum = Blosum62()
 sub_matrix = blosum._ordered(blosum.matrix)

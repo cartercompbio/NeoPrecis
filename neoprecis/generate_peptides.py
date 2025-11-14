@@ -9,7 +9,14 @@ import argparse
 import gzip
 import re
 import pandas as pd
-from api import ReadVCF, ReadMAF, PepGen, EpiGen, WritePeptideTXT
+
+# Support both package import and direct script execution
+try:
+    from .api import ReadVCF, ReadMAF, PepGen, EpiGen, WritePeptideTXT
+except ImportError:
+    # Fallback for direct execution (python neoprecis/generate_peptides.py)
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from api import ReadVCF, ReadMAF, PepGen, EpiGen, WritePeptideTXT
 
 
 def ArgumentParser(args=None):

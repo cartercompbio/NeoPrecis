@@ -4,9 +4,17 @@
 # Author: Kohan
 
 import os
+import sys
 import argparse
 import pandas as pd
-from api import MHC, BestEpi, EpiMetrics
+
+# Support both package import and direct script execution
+try:
+    from .api import MHC, BestEpi, EpiMetrics
+except ImportError:
+    # Fallback for direct execution (python neoprecis/calculate_metrics.py)
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from api import MHC, BestEpi, EpiMetrics
 
 
 def ArgumentParser(args=None):

@@ -15,7 +15,13 @@ from collections import defaultdict, OrderedDict
 from scipy.stats import norm
 from Bio import SeqIO
 from Bio.Seq import translate
-from .CRD import SubCRD, PeptCRD # CRD module
+
+# Support both package import and direct script execution
+try:
+    from .CRD import SubCRD, PeptCRD  # When imported as package
+except ImportError:
+    from CRD import SubCRD, PeptCRD   # When run directly from neoprecis/ dir
+
 import warnings
 warnings.filterwarnings('ignore')
 src_dir = os.path.dirname(os.path.abspath(__file__))

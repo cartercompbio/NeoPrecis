@@ -7,8 +7,16 @@ import sys
 import os
 import argparse
 import pandas as pd
-from api import MHC, LoadAllowedAlleles, MHCIAlleleTransform, MHCIIAlleleTransform
-from api import RunNetMHCpan, RunMixMHCpred, ReadNetMHCpan, ReadMixMHCpred
+
+# Support both package import and direct script execution
+try:
+    from .api import MHC, LoadAllowedAlleles, MHCIAlleleTransform, MHCIIAlleleTransform
+    from .api import RunNetMHCpan, RunMixMHCpred, ReadNetMHCpan, ReadMixMHCpred
+except ImportError:
+    # Fallback for direct execution (python neoprecis/run_mhc_bind_pred.py)
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from api import MHC, LoadAllowedAlleles, MHCIAlleleTransform, MHCIIAlleleTransform
+    from api import RunNetMHCpan, RunMixMHCpred, ReadNetMHCpan, ReadMixMHCpred
 
 
 def ArgumentParser(args=None):
