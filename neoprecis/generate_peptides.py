@@ -42,7 +42,7 @@ def ArgumentParser(args=None):
 
 # assign mutation ID for each row
 def AssignMutID(row):
-    hgvsp = row['HGVSp']
+    hgvsp = str(row['HGVSp'])
     if re.match(r'.*:p\.', hgvsp):  # Match any chars followed by ':p.'
         mut = hgvsp.split(':')[1]
     elif re.match(r'^p\.', hgvsp):  # Match strings starting with 'p.'
