@@ -103,16 +103,30 @@ def UpdateRef(ref_file, new_alleles, new_motifs, new_pos_facs, sort_alleles=Fals
         data['position_factors'] = data['position_factors'][sorted_indices]
     
     # Save all datasets
+    # Datasets that get updated and should be compressed
+    compress_list = {'allele_list', 'motifs', 'position_factors'}
+
     tmp_h5_file = str(Path(ref_file).parent / f".tmp_{Path(ref_file).name}")
     try:
         with h5py.File(tmp_h5_file, 'w') as f:
             for key, value in data.items():
                 if isinstance(value, list) and len(value) > 0 and isinstance(value[0], str):
                     # String list
-                    f.create_dataset(key, data=np.array(value, dtype=h5py.string_dtype()))
+                    if key in compress_list:
+                        f.create_dataset(key, data=np.array(value, dtype=h5py.string_dtype()),
+                                         compression='gzip', compression_opts=4)
+                    else:
+                        f.create_dataset(key, data=np.array(value, dtype=h5py.string_dtype()))
                 else:
-                    # Numeric array
-                    f.create_dataset(key, data=value)
+                    # Numeric array - convert float64 to float32 for space efficiency
+                    if value.dtype == np.float64:
+                        value = value.astype(np.float32)
+
+                    if key in compress_list:
+                        f.create_dataset(key, data=value,
+                                         compression='gzip', compression_opts=4)
+                    else:
+                        f.create_dataset(key, data=value)
         
         shutil.move(tmp_h5_file, ref_file)
     
