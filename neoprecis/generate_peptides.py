@@ -8,6 +8,7 @@ import os
 import argparse
 import gzip
 import re
+import numpy as np
 import pandas as pd
 
 # Support both package import and direct script execution
@@ -94,7 +95,8 @@ def Main(mut_file, out_prefix, cdna_file, cds_file,
     mut_df = mut_df[mut_df['FILTER']=='PASS'] # keep qualified mutations
     allowed_consequences = ['frameshift_variant', 'stop_lost', 'inframe_insertion', 'inframe_deletion', 'missense_variant', 'protein_altering_variant']
     mut_df = mut_df[mut_df['Consequence'].astype(str).str.contains('|'.join(allowed_consequences))] # keep nonsynonymous mutations
-    mut_df = mut_df[~(mut_df['Codons']=='')] # drop mutations without codon changes
+    mut_df['Codons'] = mut_df['Codons'].replace('', np.nan)
+    mut_df = mut_df.dropna(subset=['Codons']) # drop mutations without codon changes
     if mut_df.shape[0] == 0:
         print('No non-synonymous mutation')
         sys.exit(1)
