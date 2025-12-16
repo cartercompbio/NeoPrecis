@@ -408,6 +408,7 @@ def EmbeddingPlot(
     ax=None,
     fig=None,
     figsize=(4, 3),
+    annot_fontsize=5,
     dpi=dpi,
     figfile=None,
 ):
@@ -424,7 +425,7 @@ def EmbeddingPlot(
     # annotation
     texts = list()
     for i, row in plot_df.iterrows(): # annotate plot with a.a.
-            texts.append(ax.text(row['emb1'] + 0.02, row['emb2'] + 0.02, row['aa'], fontsize=7))
+            texts.append(ax.text(row['emb1'] + 0.02, row['emb2'] + 0.02, row['aa'], fontsize=annot_fontsize))
     adjust_text(texts, ax=ax)
 
     # save
@@ -671,7 +672,7 @@ def PerfBarPlot(perf_df, methods, metric, figfile=None, dpi=dpi, figsize=(4, 3))
 
 # barplot for the performance of MHC-I and MHC-II
 # performacne result is derived from the function Performance()
-def TwoPerfBarPlot(mhci_df, mhcii_df, methods, metric, annot=False, palette='pastel', hue_order=None, ax=None, figfile=None, dpi=dpi, figsize=(4, 3)):
+def TwoPerfBarPlot(mhci_df, mhcii_df, methods, metric, annot=False, annot_fontsize=5, palette='pastel', hue_order=None, ax=None, figfile=None, dpi=dpi, figsize=(4, 3)):
     # add MHC
     mhci_df['MHC'] = 'I'
     mhcii_df['MHC'] = 'II'
@@ -701,7 +702,7 @@ def TwoPerfBarPlot(mhci_df, mhcii_df, methods, metric, annot=False, palette='pas
     if annot:
         n = len(plot_df['method'].unique())
         for i in range(n):
-            ax.bar_label(ax.containers[i], fmt='%.3f', fontsize=8, label_type='center')
+            ax.bar_label(ax.containers[i], fmt='%.3f', fontsize=annot_fontsize, label_type='center')
 
     ax.set_ylabel(metric)
     ax.legend(loc='lower left', bbox_to_anchor=(1, 0))

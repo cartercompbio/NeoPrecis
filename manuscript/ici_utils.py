@@ -461,6 +461,7 @@ def PerformanceBarPlot(
     eval_metric,                # evaluation metric; AUROC or AUPRC
     method_col='method',        # method column name
     group_col='cancer',         # group column name (x-axis; default=cancer)
+    size_col=None,              # sample size column for each group
     method_rename_dict={},      # rename method names
     legend=True,                # w/ or w/o legend
     ncol=3,                     # legend ncol
@@ -490,6 +491,17 @@ def PerformanceBarPlot(
     n = len(perf_df[method_col].unique())
     for i in range(n):
         ax.bar_label(ax.containers[i], fmt='%.3f', fontsize=fontsize, label_type='center')
+
+    # annot sample size
+    if size_col:
+        # Create a dictionary mapping group -> size
+        # We drop duplicates because multiple methods might share the same group/size
+        size_map = plot_df[[group_col, 'size']].drop_duplicates().set_index(group_col)['size'].to_dict()
+        
+        # Format labels: "Groupname\n(n=123)"
+        new_labels = [f"{g} (n={size_map.get(g, '?')})" for g in group_order]
+        
+        ax.set_xticklabels(new_labels)
 
     # legend
     if legend:
@@ -560,6 +572,7 @@ def BurdenBoxPlot(
     method_rename_dict={},      # rename method names
     legend=True,
     figsize=(6,4),
+    annot_fontsize=10,
     dpi=600,
     figfile=None,
     fig = None,
@@ -600,7 +613,7 @@ def BurdenBoxPlot(
         x_pos = i
         y = y_max * y_offset_factor
         pval_text = f"p = {pval:.2e}"
-        ax.text(x_pos, y, pval_text, ha='center', va='bottom', fontsize=10, color='black')
+        ax.text(x_pos, y, pval_text, ha='center', va='bottom', fontsize=annot_fontsize, color='black')
 
     # move legend
     if legend:

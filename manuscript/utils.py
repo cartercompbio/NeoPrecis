@@ -26,6 +26,32 @@ from sklearn import metrics
 '''
 
 ######################
+### Figure Setting ###
+######################
+
+def set_font_style(font_family='sans-serif', font='DejaVu Sans', base_fontsize=7):
+    """
+    Sets global plot style for publication quality.
+    """
+    
+    # 1. Reset any previous settings to avoid conflicts
+    plt.rcdefaults()
+    
+    # 2. Set Font Family
+    # If Arial isn't found, it falls back to standard sans-serif (DejaVu Sans)
+    plt.rcParams['font.family'] = font_family
+    plt.rcParams[f'font.{font_family}'] = [font]
+    
+    # 3. Set Font Sizes (Globally)
+    plt.rcParams['font.size'] = base_fontsize          # Default text size
+    plt.rcParams['axes.titlesize'] = base_fontsize     # Subplot titles slightly larger
+    plt.rcParams['axes.labelsize'] = base_fontsize     # Axis labels (x, y)
+    plt.rcParams['xtick.labelsize'] = base_fontsize    # Tick numbers on x
+    plt.rcParams['ytick.labelsize'] = base_fontsize    # Tick numbers on y
+    plt.rcParams['legend.fontsize'] = base_fontsize    # Legend text
+
+
+######################
 ###### Blosum 62 #####
 ######################
 
