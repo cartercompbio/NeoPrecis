@@ -89,8 +89,21 @@ def UpdateRef(ref_file, new_alleles, new_motifs, new_pos_facs, sort_alleles=Fals
                 data[key] = ref[key].asstr()[:].tolist()
             else:  # Numeric data
                 data[key] = ref[key][:]
-    
-    # Update only the specific keys you need
+
+    # Check for duplicates and remove old versions
+    allele_list = data['allele_list']
+    motifs = data['motifs']
+    position_factors = data['position_factors']
+
+    # Find indices of alleles in allele_list that are NOT in new_alleles (keep these)
+    keep_indices = [i for i, allele in enumerate(allele_list) if allele not in new_alleles]
+
+    # Keep only non-duplicate alleles from the old data
+    data['allele_list'] = [allele_list[i] for i in keep_indices]
+    data['motifs'] = motifs[keep_indices]
+    data['position_factors'] = position_factors[keep_indices]
+
+    # Append new alleles and their data
     data['allele_list'] = data['allele_list'] + new_alleles
     data['motifs'] = np.vstack([data['motifs'], new_motifs])
     data['position_factors'] = np.vstack([data['position_factors'], new_pos_facs])
