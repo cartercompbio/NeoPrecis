@@ -9,11 +9,13 @@ import pandas as pd
 file = sys.argv[1]
 df = pd.read_csv(file)
 
-# drop SubCRD, PeptCRD
-df = df.drop(columns=['SubCRD-I', 'SubCRD-II', 'PeptCRD-I', 'PeptCRD-II'])
-
-# rename Immgen to NP-Immuno
-df = df.rename(columns={'Immgen-I': 'NP-Immuno-I', 'Immgen-II': 'NP-Immuno-II'})
+for mhc in ['I', 'II']:
+    # drop SubCRD
+    if f'SubCRD-{mhc}' in df.columns:
+        df = df.drop(columns=[f'SubCRD-{mhc}'])
+    # rename Immgen to NP-Immuno
+    if f'Immgen-{mhc}' in df.columns:
+        df = df.rename(columns={f'Immgen-{mhc}': f'NP-Immuno-{mhc}'})
 
 # save
 df.to_csv(file, index=False)

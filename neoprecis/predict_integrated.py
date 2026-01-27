@@ -55,15 +55,25 @@ def Main(input_file, model_file, dna_af_col, rna_af_col, rna_exp_col, phbr_col, 
     mhci_model = LRPredictor(models['MHC-I'])       # MHC-I model
     mhcii_model = LRPredictor(models['MHC-II'])     # MHC-II model
 
-    # MHC-I
-    X = df[[dna_af_col, rna_af_col, rna_exp_col, f'{phbr_col}-I', f'{immuno_col}-I']].to_numpy()
-    mhci_preds = mhci_model(X)
-    df['NP-Integrated-I'] = mhci_preds
+    # check columns
+    if dna_af_col not in df.columns:
+        raise KeyError(f'Column {dna_af_col} not found.')
+    if rna_af_col not in df.columns:
+        raise KeyError(f'Column {rna_af_col} not found.')
+    if rna_exp_col not in df.columns:
+        raise KeyError(f'Column {rna_exp_col} not found.')
 
+    # MHC-I
+    if (f'{phbr_col}-I' in df.columns) and (f'{immuno_col}-I' in df.columns):
+        X = df[[dna_af_col, rna_af_col, rna_exp_col, f'{phbr_col}-I', f'{immuno_col}-I']].to_numpy()
+        mhci_preds = mhci_model(X)
+        df['NP-Integrated-I'] = mhci_preds
+    
     # MHC-II
-    X = df[[dna_af_col, rna_af_col, rna_exp_col, f'{phbr_col}-II', f'{immuno_col}-II']].to_numpy()
-    mhcii_preds = mhcii_model(X)
-    df['NP-Integrated-II'] = mhcii_preds
+    if (f'{phbr_col}-II' in df.columns) and (f'{immuno_col}-II' in df.columns):
+        X = df[[dna_af_col, rna_af_col, rna_exp_col, f'{phbr_col}-II', f'{immuno_col}-II']].to_numpy()
+        mhcii_preds = mhcii_model(X)
+        df['NP-Integrated-II'] = mhcii_preds
 
     # save
     df.to_csv(input_file, index=False)
