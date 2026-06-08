@@ -27,7 +27,7 @@ def PycloneLociAnnotation(neoag_df, loci_df, id_col='mutation_id', cluster_col='
     index_cols = ['#CHROM', 'POS', 'REF', 'ALT']
     loci_df[index_cols] = loci_df[id_col].str.split('_', expand=True) # split ID col into chr, pos, ref, alt
     loci_df = loci_df[index_cols + [cluster_col, prev_col]] # keep necessary columns
-    loci_df.loc[:, '#CHROM'] = loci_df['#CHROM'].apply(lambda x: 'chr' + str(x)) # 1 -> chr1
+    loci_df.loc[:, '#CHROM'] = loci_df['#CHROM'].apply(lambda x: str(x) if str(x).startswith('chr') else 'chr' + str(x)) # 1 -> chr1
     loci_df.loc[:, 'POS'] = loci_df['POS'].astype(int)
     neoag_df = neoag_df.merge(loci_df, on=index_cols, how='left')
     return neoag_df
@@ -179,6 +179,12 @@ class SubcloneScoring():
         return score
 
 
+def safe_log10(x):
+    if x > 0:
+        return np.log10(x)
+    return np.nan
+
+
 def FindPercentile(score, ref_arr):
     return np.searchsorted(ref_arr, score, side='right')
 
@@ -187,30 +193,53 @@ def Main(input_file, cluster_file, loci_file, output_file, rank_ref_file):
     df = pd.read_csv(input_file)
     loci_df = pd.read_csv(loci_file, sep='\t')
     cluster_df = pd.read_csv(cluster_file, sep='\t')
+
+    # handle missing MHC columns
+    has_mhci = 'NP-Immuno-I' in df.columns
+    has_mhcii = 'NP-Immuno-II' in df.columns
+    if not has_mhci:
+        df['NP-Immuno-I'] = np.nan
+    if not has_mhcii:
+        df['NP-Immuno-II'] = np.nan
     df['NP-Immuno-dual'] = df['NP-Immuno-I'] * df['NP-Immuno-II']
+
     df = PycloneLociAnnotation(df, loci_df)
-    
+
     ### metric computation
     metric_dict = defaultdict(dict)
-    
+
     # w/o clonality
     metric_dict['value']['TMB'] = df.shape[0]
     metric_dict['value']['TNB'] = (df['PHBR-I'] <= 2).sum()
     metric_dict['value']['NPB'] = (df['NP-Immuno-dual'] >= 0.16).sum()
-    metric_dict['value']['NP-LandscapeSum'] = np.log10(df['NP-Immuno-dual'].sum())
+    metric_dict['value']['NP-LandscapeSum'] = safe_log10(df['NP-Immuno-dual'].sum())
+    metric_dict['value']['NP-LandscapeSum-I'] = safe_log10(df['NP-Immuno-I'].sum())
+    metric_dict['value']['NP-LandscapeSum-II'] = safe_log10(df['NP-Immuno-II'].sum())
 
     # w/ clonality
-    metric_dict['value']['NP-LandscapeCCF'] = np.log10((df['NP-Immuno-dual'] * df['cellular_prevalence']).sum())
-    subclone_scoring = SubcloneScoring(df, cluster_df) # subclone scoring obj
-    subclone_metric_dict = subclone_scoring.scoring() # scoring with subclone architecture
-    metric_dict['value']['NP-LandscapeClone'] = np.log10(subclone_metric_dict['NP-Immuno-dual'])
+    metric_dict['value']['NP-LandscapeCCF'] = safe_log10((df['NP-Immuno-dual'] * df['cellular_prevalence']).sum())
+    metric_dict['value']['NP-LandscapeCCF-I'] = safe_log10((df['NP-Immuno-I'] * df['cellular_prevalence']).sum())
+    metric_dict['value']['NP-LandscapeCCF-II'] = safe_log10((df['NP-Immuno-II'] * df['cellular_prevalence']).sum())
+
+    # subclone scoring
+    metric_cols = [m for m in ['NP-Immuno-I', 'NP-Immuno-II'] if m in df.columns]
+    dual_metrics_dict = {'NP-Immuno-dual': ('NP-Immuno-I', 'NP-Immuno-II')} if (has_mhci and has_mhcii) else {}
+    subclone_scoring = SubcloneScoring(df, cluster_df)
+    subclone_metric_dict = subclone_scoring.scoring(metric_cols=metric_cols, dual_metrics_dict=dual_metrics_dict)
+    metric_dict['value']['NP-LandscapeClone'] = safe_log10(subclone_metric_dict.get('NP-Immuno-dual', np.nan))
+    metric_dict['value']['NP-LandscapeClone-I'] = safe_log10(subclone_metric_dict.get('NP-Immuno-I', np.nan))
+    metric_dict['value']['NP-LandscapeClone-II'] = safe_log10(subclone_metric_dict.get('NP-Immuno-II', np.nan))
 
     ### percentile ranking
     rank_df = pd.read_csv(rank_ref_file, index_col=0)
     for col in rank_df.columns:
         cancer, metric = col.split('_')
-        percentile = FindPercentile(metric_dict['value'][metric], rank_df[col])
-        metric_dict[f'percentile_{cancer}'][metric] = percentile/100
+        value = metric_dict['value'][metric]
+        if isinstance(value, float) and np.isnan(value):
+            metric_dict[f'percentile_{cancer}'][metric] = np.nan
+        else:
+            percentile = FindPercentile(value, rank_df[col])
+            metric_dict[f'percentile_{cancer}'][metric] = percentile/100
     
     ### result
     result_df = pd.DataFrame(metric_dict)
