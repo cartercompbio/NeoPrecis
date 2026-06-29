@@ -24,7 +24,7 @@ path:
   - /carter/users/kol004/neoantigen/tolerance/PeptCRD/data/crd_triplets/merged_neg5_triplets.data.h5
   - /carter/users/kol004/neoantigen/tolerance/PeptCRD/data/cedar_filter_dataset/epitopes.data.h5
   outdir: /carter/users/kol004/neoantigen/tolerance/PeptCRD/training/results
-  reference: /cellar/users/kol004/neoantigen/CrossReactivityDistance/data/peptModel_ref.h5
+  reference: /carter/users/kol004/neoantigen/CrossReactivityDistance/data/peptModel_ref.h5
 task: MULTI
 train:
   batch_size: 32
