@@ -44,9 +44,13 @@ class LRPredictor():
         return 1 / (1 + np.exp(-z))
     
     def _fillna(self, X):
-        X[:, [0,1,4]] = np.nan_to_num(X[:, [0,1,4]], 0) # DNA_AF, RNA_AF, NP-Immuno
-        X[:, 2] = np.nan_to_num(X[:, 2], 1) # RNA_EXP_QRT
-        X[:, 3] = np.nan_to_num(X[:, 3], 100) # PHBR
+        # `nan=` must be passed as a keyword: nan_to_num's second positional
+        # parameter is `copy`, so nan_to_num(x, 100) fills with 0.0, not 100.
+        # A 0-filled PHBR becomes 1 - 0/100 = 1.0 below, i.e. the strongest
+        # binder rather than the weakest.
+        X[:, [0,1,4]] = np.nan_to_num(X[:, [0,1,4]], nan=0) # DNA_AF, RNA_AF, NP-Immuno
+        X[:, 2] = np.nan_to_num(X[:, 2], nan=1) # RNA_EXP_QRT
+        X[:, 3] = np.nan_to_num(X[:, 3], nan=100) # PHBR
 
 
 def Main(input_file, model_file, dna_af_col, rna_af_col, rna_exp_col, phbr_col, immuno_col):

@@ -15,7 +15,13 @@ CONFIG=$4
 source ${CONFIG}
 
 # generate site file
-awk -F, 'BEGIN { OFS="\t" } NR > 1 { print $2, $3, $3 }' ${MUT_FILE} > ${OUT_BASENAME}.site.tsv
+# Look the columns up by name: generate_peptides.py writes an unnamed pandas
+# index plus original_idx ahead of #CHROM/POS, so fixed positions drift.
+awk -F, 'BEGIN { OFS="\t" }
+    NR == 1 { for (i = 1; i <= NF; i++) { if ($i == "#CHROM") c = i; if ($i == "POS") p = i }
+              if (!c || !p) { print "ERROR: #CHROM/POS not found in " FILENAME > "/dev/stderr"; exit 1 }
+              next }
+    { print $c, $p, $p }' ${MUT_FILE} > ${OUT_BASENAME}.site.tsv
 #awk -F, 'BEGIN { OFS="\t" } NR > 1 { max_value = ($3 > $3 + length($4) - 1) ? $3 : $3 + length($4) - 1; print $2, $3, max_value }' ${MUT_FILE} > ${OUT_BASENAME}.site.tsv
 
 # bam-readcount
