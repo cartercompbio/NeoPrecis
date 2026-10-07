@@ -97,6 +97,8 @@ def Main(mut_file, out_prefix, cdna_file, cds_file,
     mut_df = mut_df[mut_df['Consequence'].astype(str).str.contains('|'.join(allowed_consequences))] # keep nonsynonymous mutations
     mut_df['Codons'] = mut_df['Codons'].replace('', np.nan)
     mut_df = mut_df.dropna(subset=['Codons']) # drop mutations without codon changes
+    named = mut_df['HGVSp'].astype(str).str.contains(r'^p\.|:p\.') | mut_df['Amino_acids'].replace('', np.nan).notna()
+    mut_df = mut_df[named] # drop mutations AssignMutID cannot name: no protein change in HGVSp or Amino_acids
     if mut_df.shape[0] == 0:
         print('No non-synonymous mutation')
         sys.exit(1)
