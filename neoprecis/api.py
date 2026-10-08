@@ -970,7 +970,7 @@ class EpiMetrics():
         # scores
         metric_dict = dict()
         if 'Robustness' in metrics:
-            results['Robustness'] = (df[self.mt_rank_col] < bind_threshold).sum() # robustness
+            results['Robustness'] = (df[self.mt_rank_col] <= bind_threshold).sum() # robustness: binders, as the mask counts them
         
         if 'PHBR' in metrics:
             metric_dict['PHBR'] = df[self.mt_rank_col].to_numpy()
