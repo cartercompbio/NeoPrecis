@@ -951,6 +951,7 @@ class EpiMetrics():
             metrics=['Robustness', 'PHBR', 'Agretopicity', 'PeptCRD', 'SubCRD', 'Foreignness'],
             best_aggregation_method='masked_max',
             save_all_aggregation=False,
+            zero_without_binder=('PeptCRD', 'Immgen'),
     ):
         results = dict()
 
@@ -1009,6 +1010,8 @@ class EpiMetrics():
                 for method, score in aggregate_scores.items():
                     aggregations[f'{name}_{method}'] = score
                 score = aggregate_scores[best_aggregation_method] # best method
+                if mask.all() and (name in zero_without_binder):
+                    score = 0.0 # no binding peptide: nothing to recognize
             results[name] = score # final score
         
         # output
