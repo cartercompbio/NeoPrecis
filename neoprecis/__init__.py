@@ -5,7 +5,7 @@ A comprehensive toolkit for neoantigen prediction, peptide generation,
 MHC binding prediction, and immunogenicity scoring.
 """
 
-__version__ = '1.4.0'
+__version__ = '1.5.0'
 __author__ = 'Kohan'
 
 # Import main API classes for direct access
@@ -32,8 +32,6 @@ from .api import (
     RunMixMHCpred,
 
     # Utility functions
-    MHCIAlleleTransform,
-    MHCIIAlleleTransform,
     LoadAllowedAlleles,
 )
 
@@ -72,7 +70,5 @@ __all__ = [
     'RunMixMHCpred',
 
     # Utility functions
-    'MHCIAlleleTransform',
-    'MHCIIAlleleTransform',
     'LoadAllowedAlleles',
 ]

@@ -8,4 +8,4 @@ between peptides based on substitution patterns and positional factors.
 from .CRD import SubCRD, PeptCRD
 
 __all__ = ['SubCRD', 'PeptCRD']
-__version__ = '1.4.0'
+__version__ = '1.5.0'

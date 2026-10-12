@@ -19,8 +19,6 @@ try:
         Blosum62,
         MHC,
         LoadAllowedAlleles,
-        MHCIAlleleTransform,
-        MHCIIAlleleTransform,
         RunNetMHCpan,
         ReadNetMHCpan,
     )
@@ -31,8 +29,6 @@ except ImportError:
         Blosum62,
         MHC,
         LoadAllowedAlleles,
-        MHCIAlleleTransform,
-        MHCIIAlleleTransform,
         RunNetMHCpan,
         ReadNetMHCpan,
     )
@@ -170,28 +166,18 @@ def Main(ref_file, std_alleles, pred_alleles, peptide_file, pred_exec, bind_thrs
 
 def GetNewAlleles(mhc_obj, aval_alleles, mhc, predictor, exec_path):
     # sample's alleles
-    alleles = mhc_obj.name_dict[f'MHC-{mhc.upper()}'][predictor]
-    print("Sample's alleles:", alleles)
+    print("Sample's alleles:", mhc_obj.name_dict[f'MHC-{mhc.upper()}']['standard'])
 
-    # predictor-allowed alleles
+    # predictor-allowed alleles, under their predictor names, with their standard names
     allowed_alleles = LoadAllowedAlleles(mhc, predictor, os.path.dirname(exec_path))
-    alleles = [s for s in alleles if s in allowed_alleles]
-    print("Predictor-allowed alleles:", alleles)
+    pairs = mhc_obj.predictable(mhc, predictor, allowed_alleles)
+    print("Predictor-allowed alleles:", [name for name, _ in pairs])
 
     # ref-available alleles
-    if mhc.lower() == 'i':
-        std_alleles = [MHCIAlleleTransform(s, From=predictor, To='standard') for s in alleles]
-    else:
-        std_alleles = [MHCIIAlleleTransform(s, From=predictor, To='standard') for s in alleles]
-    std_alleles = [s for s in std_alleles if s not in aval_alleles]
+    pairs = [(name, std) for name, std in pairs if std not in aval_alleles]
+    alleles, std_alleles = [name for name, _ in pairs], [std for _, std in pairs]
     print("New alleles for ref:", std_alleles)
 
-    # convert to predictor-named alleles
-    if mhc.lower() == 'i':
-        alleles = [MHCIAlleleTransform(s, From='standard', To=predictor) for s in std_alleles]
-    else:
-        alleles = [MHCIIAlleleTransform(s, From='standard', To=predictor) for s in std_alleles]
-    
     return alleles, std_alleles
 
 

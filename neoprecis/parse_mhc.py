@@ -4,6 +4,17 @@
 # Author: Kohan
 
 import argparse
+import re
+
+
+# allele name at two fields, the resolution MHC-binding predictors name alleles at, with the
+# expression letter of the full name: HLA-A*02:01:14Q -> A*02:01Q, DQB1*02:20:01:01N -> DQB1*02:20N
+# (the letter stays so MHC can name the allele as the predictor lists it; see MHC._names)
+def TwoFields(allele):
+    gene, code = allele.removeprefix('HLA-').split('*')
+    fields = code.split(':')
+    letter = re.search(r'[A-Z]$', code)
+    return f"{gene}*{fields[0]}:{re.sub(r'[A-Z]$', '', fields[1])}{letter.group() if letter else ''}"
 
 
 def ArgumentParser(args=None):
@@ -59,8 +70,7 @@ def ParseHLAHD(file, genes=['A', 'B', 'C', 'DRB1', 'DQA1', 'DQB1', 'DPA1', 'DPB1
         if candidate == 'Not typed':
             a1 = ''
         else:
-            codes = candidate.split('*')[1].split(':')
-            a1 = f'{gene}*{codes[0]}:{codes[1]}'
+            a1 = TwoFields(candidate)
 
         # allele 2
         candidate = line[2]
@@ -69,8 +79,7 @@ def ParseHLAHD(file, genes=['A', 'B', 'C', 'DRB1', 'DQA1', 'DQB1', 'DPA1', 'DPB1
         elif candidate == '-':
             a2 = a1
         else:
-            codes = candidate.split('*')[1].split(':')
-            a2 = f'{gene}*{codes[0]}:{codes[1]}'
+            a2 = TwoFields(candidate)
             
         alleles[f'{gene}_1'] = a1
         alleles[f'{gene}_2'] = a2

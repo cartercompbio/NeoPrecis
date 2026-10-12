@@ -10,12 +10,12 @@ import pandas as pd
 
 # Support both package import and direct script execution
 try:
-    from .api import MHC, LoadAllowedAlleles, MHCIAlleleTransform, MHCIIAlleleTransform
+    from .api import MHC, LoadAllowedAlleles
     from .api import RunNetMHCpan, RunMixMHCpred, ReadNetMHCpan, ReadMixMHCpred
 except ImportError:
     # Fallback for direct execution (python neoprecis/run_mhc_bind_pred.py)
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from api import MHC, LoadAllowedAlleles, MHCIAlleleTransform, MHCIIAlleleTransform
+    from api import MHC, LoadAllowedAlleles
     from api import RunNetMHCpan, RunMixMHCpred, ReadNetMHCpan, ReadMixMHCpred
 
 
@@ -83,21 +83,20 @@ def RunMHCPred(mhc_class: str, predictor: str, exec_path: str, alleles: list, pe
 
 
 # read MHC prediction file
-# input: mhc_class ('i' or 'ii'), predictor ('netmhcpan' or 'mixmhcpred'),
-#        mhc (allele object), pred_file (binding prediction file)
+# input: mhc_class ('i' or 'ii'), std_names (predictor name -> standard name),
+#        predictor ('netmhcpan' or 'mixmhcpred'), pred_file (binding prediction file)
 # output: pandas DF
-def ReadMHCPred(mhc_class: str, mhc: MHC, predictor: str, pred_file: str):
-    # alelle rename dict
-    mhc_name_transform_dict = mhc.get_transform_dict(mhc.name_dict[f'MHC-{mhc_class.upper()}'], From=predictor, To='standard')
+def ReadMHCPred(mhc_class: str, std_names: dict, predictor: str, pred_file: str):
     # read prediction file
     if predictor == 'netmhcpan': # netmhcpan
         df = ReadNetMHCpan(pred_file)
     else: # mixmhcpred
         df = ReadMixMHCpred(pred_file)
+    # netMHCpan writes a class I name as given (HLA-A*02:01); any other name is cut after HLA-
     if (predictor == 'netmhcpan') and (mhc_class == 'i'):
-        df['MHC'] = df['MHC'].apply(lambda x: x[4:])
+        df['MHC'] = df['MHC'].apply(lambda x: std_names.get(x, x[4:]))
     else:
-        df['MHC'] = df['MHC'].apply(lambda x: mhc_name_transform_dict[x])
+        df['MHC'] = df['MHC'].apply(lambda x: std_names[x])
     return df
 
 
@@ -111,15 +110,11 @@ def Main(args):
     allowed_alleles = LoadAllowedAlleles(mhc_class, predictor, exec_dir)
     # target alleles
     mhc = MHC(args.mhc_file)
-    alleles = mhc.name_dict[f'MHC-{mhc_class.upper()}'][predictor] # predictor's allele names
-    print('Target alleles:', alleles)
-    # check if targets in allowed list
-    alleles = list(set(alleles)) # unique
-    alleles = [allele for allele in alleles if allele in allowed_alleles]
-    if mhc_class == 'i':
-        std_alleles = [MHCIAlleleTransform(allele, From=predictor, To='standard') for allele in alleles]
-    else:
-        std_alleles = [MHCIIAlleleTransform(allele, From=predictor, To='standard') for allele in alleles]
+    print('Target alleles:', mhc.name_dict[f'MHC-{mhc_class.upper()}']['standard'])
+    # the alleles in the predictor's list, under their predictor names, and their standard names
+    std_names = dict(mhc.predictable(mhc_class, predictor, allowed_alleles))
+    alleles = list(set(std_names)) # unique
+    std_alleles = [std_names[allele] for allele in alleles]
     print('Allowed alleles:', alleles)
     # exit if no alleles
     if len(alleles) == 0:
@@ -157,7 +152,7 @@ def Main(args):
     RunMHCPred(mhc_class, predictor, args.exec_file, alleles, tmp_peptide_file, pred_file) # run binding prediction
 
     ### Parse output
-    df = ReadMHCPred(mhc_class, mhc, predictor, pred_file)
+    df = ReadMHCPred(mhc_class, std_names, predictor, pred_file)
     df = pd.concat([prev_df, df], axis=0, ignore_index=True)
     df = df[df['Peptide'].isin(peptides)].reset_index(drop=True)
     df = df[df['MHC'].isin(std_alleles)].reset_index(drop=True)

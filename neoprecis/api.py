@@ -19,15 +19,14 @@ from Bio.Seq import translate
 # Support both package import and direct script execution
 try:
     from .CRD import SubCRD, PeptCRD  # When imported as package
+    from .parse_mhc import TwoFields
 except ImportError:
     from CRD import SubCRD, PeptCRD   # When run directly from neoprecis/ dir
+    from parse_mhc import TwoFields
 
 import warnings
 warnings.filterwarnings('ignore')
 src_dir = os.path.dirname(os.path.abspath(__file__))
-
-# load allele code mapping
-allele_code_dict = json.load(open(f'{src_dir}/allele_code_mapping.json', 'r'))
 
 # check and import foreignness module
 if os.path.isdir(f'{src_dir}/NeoantigenEditing'):
@@ -233,12 +232,12 @@ class MHC():
             if not (re.match(r'(A|B|C)\*[0-9]+\:[0-9]+', line) or re.match(r'(DPA|DPB|DQA|DQB|DRB)[0-9]\*[0-9]+\:[0-9]+', line)):
                 print(f"Allele {line} isn't valid")
                 continue
-            gene, group, prot = self._nomenclature(line)
+            gene, group, prot, letter = self._nomenclature(line)
             # save to dict
             if gene in ['A', 'B', 'C']:
-                self.allele_dict['MHC-I'][gene].append((gene, group, prot))
+                self.allele_dict['MHC-I'][gene].append((gene, group, prot, letter))
             elif re.match(r'(DPA|DPB|DQA|DQB|DRB)[0-9]', gene):
-                self.allele_dict['MHC-II'][gene[:-1]].append((gene, group, prot))
+                self.allele_dict['MHC-II'][gene[:-1]].append((gene, group, prot, letter))
             else:
                 print(f"Gene {gene} isn't valid")
                 continue
@@ -248,18 +247,32 @@ class MHC():
         self.name_dict['MHC-I'] = self._get_mhci_names(self.allele_dict['MHC-I'])
         self.name_dict['MHC-II'] = self._get_mhcii_names(self.allele_dict['MHC-II'])
 
+    # gene, the first two fields and the expression letter ('' without one; see parse_mhc.TwoFields)
+    # A*02:01:14Q -> ('A', '02', '01', 'Q'); DQB1*02:20:01:01N -> ('DQB1', '02', '20', 'N')
     def _nomenclature(self, allele):
-        gene, code = allele.split('*')
-        group, prot = code.split(':')
-        return gene, group, prot
-    
+        gene, code = TwoFields(allele).split('*')
+        letter = code[-1] if code[-1].isalpha() else ''
+        group, prot = code.removesuffix(letter).split(':')
+        return gene, group, prot, letter
+
+    # an allele's predictor names, in the order they are tried: the name without its expression
+    # letter, then with it (netMHCpan lists HLA-A*30:14L only with its L); a null allele (N) makes no
+    # protein, so it is tried only under its N name, which a predictor lists only for a null allele
+    def _names(self, name, letter):
+        return ([name] if letter != 'N' else []) + ([name + letter] if letter else [])
+
+    # standard name: two fields; a null allele keeps its N (A*02:01, A*24:09N)
+    def _standard(self, gene, group, prot, letter):
+        return f'{gene}*{group}:{prot}' + ('N' if letter == 'N' else '')
+
+    # standard names and each allele's names per predictor
     def _get_mhci_names(self, allele_dict, genes=['A','B','C']):
         standard_list, netmhcpan_list, mixmhcpred_list = list(), list(), list()
-        for gene in genes:
-            for gene, group, prot in allele_dict[gene]:
-                standard_list.append(f'{gene}*{group}:{prot}')
-                netmhcpan_list.append(f'HLA-{gene}*{group}:{prot}')
-                mixmhcpred_list.append(f'{gene}{group}{prot}')
+        for locus in genes:
+            for gene, group, prot, letter in allele_dict[locus]:
+                standard_list.append(self._standard(gene, group, prot, letter))
+                netmhcpan_list.append(self._names(f'HLA-{gene}*{group}:{prot}', letter))
+                mixmhcpred_list.append(self._names(f'{gene}{group}{prot}', letter))
         d = {
             'standard': standard_list,
             'netmhcpan': netmhcpan_list,
@@ -271,28 +284,40 @@ class MHC():
         standard_list, netmhcpan_list, mixmhcpred_list = list(), list(), list()
         # DR
         if 'DRB' in genes:
-            for gene, group, prot in allele_dict['DRB']:
-                standard_list.append(f'{gene}*{group}:{prot}')
-                netmhcpan_list.append(f'{gene}_{group}{prot}')
-                mixmhcpred_list.append(f'{gene}_{group}_{prot}')
-        # DP, DQ
+            for gene, group, prot, letter in allele_dict['DRB']:
+                standard_list.append(self._standard(gene, group, prot, letter))
+                netmhcpan_list.append(self._names(f'{gene}_{group}{prot}', letter))
+                mixmhcpred_list.append(self._names(f'{gene}_{group}_{prot}', letter))
+        # DP, DQ: a pair's names combine its chains' names
         for gene in ['DP', 'DQ']:
             if (f'{gene}A' not in genes) or (f'{gene}B' not in genes):
                 continue
-            for gene_a, group_a, prot_a in allele_dict[f'{gene}A']:
-                for gene_b, group_b, prot_b in allele_dict[f'{gene}B']:
-                    standard_list.append(f'{gene_a}*{group_a}:{prot_a}_{gene_b}*{group_b}:{prot_b}')
-                    netmhcpan_list.append(f'HLA-{gene_a}{group_a}{prot_a}-{gene_b}{group_b}{prot_b}')
-                    mixmhcpred_list.append(f'{gene_a}_{group_a}_{prot_a}__{gene_b}_{group_b}_{prot_b}')
+            for gene_a, group_a, prot_a, letter_a in allele_dict[f'{gene}A']:
+                for gene_b, group_b, prot_b, letter_b in allele_dict[f'{gene}B']:
+                    standard_list.append(f'{self._standard(gene_a, group_a, prot_a, letter_a)}_'
+                                         f'{self._standard(gene_b, group_b, prot_b, letter_b)}')
+                    netmhcpan_list.append([f'HLA-{a}-{b}' for a in self._names(f'{gene_a}{group_a}{prot_a}', letter_a)
+                                           for b in self._names(f'{gene_b}{group_b}{prot_b}', letter_b)])
+                    mixmhcpred_list.append([f'{a}__{b}' for a in self._names(f'{gene_a}_{group_a}_{prot_a}', letter_a)
+                                            for b in self._names(f'{gene_b}_{group_b}_{prot_b}', letter_b)])
         d = {
             'standard': standard_list,
             'netmhcpan': netmhcpan_list,
             'mixmhcpred': mixmhcpred_list
         }
         return d
-    
-    def get_transform_dict(self, allele_dict, From='netmhcpan', To='standard'):
-        return dict(zip(allele_dict[From], allele_dict[To]))
+
+    # the sample's alleles a predictor can score, as (predictor name, standard name) pairs: each
+    # allele under the first of its names in the predictor's list (allowed); an allele with none is
+    # left out
+    def predictable(self, mhc_class, predictor, allowed):
+        names = self.name_dict[f'MHC-{mhc_class.upper()}']
+        pairs = list()
+        for candidates, standard in zip(names[predictor], names['standard']):
+            name = next((n for n in candidates if n in allowed), None)
+            if name is not None:
+                pairs.append((name, standard))
+        return pairs
 
 
 ###############################
@@ -638,91 +663,6 @@ def LoadAllowedAlleles(mhc, predictor, dirname):
     else:
         print(f'MHC={mhc} or predictor={predictor} is not valid')
     return alleles
-
-
-### normalize allele name
-# MHC-I
-# MixMHCpred: A0101
-# NetMHCpan: HLA-A01:01 or HLA-A*01:01
-# standard: A*01:01
-def MHCIAlleleTransform(allele, From='mixmhcpred', To='netmhcpan'):
-    # standardize
-    if From == 'mixmhcpred':
-        gene, code = allele[0], allele[1:]
-        code = allele_code_dict[gene][code]
-        group, prot = code.split(':')
-    elif From == 'netmhcpan':
-        allele = allele.split('-')[1].replace('*', '')
-        code, prot = allele.split(':')
-        gene, group = code[0], code[1:]
-    else: # standard
-        gene, code = allele.split('*')
-        group, prot = code.split(':')
-    
-    # transform
-    if To == 'mixmhcpred':
-        return f'{gene}{group}{prot}'
-    elif To == 'netmhcpan':
-        return f'HLA-{gene}*{group}:{prot}'
-    else:
-        return f'{gene}*{group}:{prot}'
-
-
-# MHC-II
-# MixMHCpred: DRB1_03_01, DPA1_01_03__DPB1_01_01
-# NetMHCpan: DRB1_0301, HLA-DPA10103-DPB10101
-# standard: DRB1*03:01, DPA1*01:03_DPB1*01:01
-def MHCIIAlleleTransform(allele, From='mixmhcpred', To='netmhcpan'):
-    ### DR
-    if 'DR' in allele:
-        # standardize
-        if From == 'mixmhcpred':
-            gene, group, prot = allele.split('_')
-        elif From == 'netmhcpan':
-            gene, code = allele.split('_')
-            code = allele_code_dict[gene][code]
-            group, prot = code.split(':')
-        else: # standard
-            gene, code = allele.split('*')
-            group, prot = code.split(':')
-        
-        # transform
-        if To == 'mixmhcpred':
-            return f'{gene}_{group}_{prot}'
-        elif To == 'netmhcpan':
-            return f'{gene}_{group}{prot}'
-        else:
-            return f'{gene}*{group}:{prot}'
-    
-    ### DP, DQ (combination)
-    else:
-        # standardize
-        if From == 'mixmhcpred': # DPA1_01_03__DPB1_01_01
-            allele_a, allele_b = allele.split('__')
-            gene_a, group_a, prot_a = allele_a.split('_')
-            gene_b, group_b, prot_b = allele_b.split('_')
-        elif From == 'netmhcpan': # HLA-DPA10103-DPB10101
-            allele_a, allele_b = allele[4:].split('-')
-            gene_a, code_a = allele_a[:4], allele_a[4:]
-            gene_b, code_b = allele_b[:4], allele_b[4:]
-            code_a = allele_code_dict[gene_a][code_a]
-            group_a, prot_a = code_a.split(':')
-            code_b = allele_code_dict[gene_b][code_b]
-            group_b, prot_b = code_b.split(':')
-        else: # DPA1*01:03_DPB1*01:01
-            allele_a, allele_b = allele.split('_')
-            gene_a, code_a = allele_a.split('*')
-            group_a, prot_a = code_a.split(':')
-            gene_b, code_b = allele_b.split('*')
-            group_b, prot_b = code_b.split(':')
-
-        # transform
-        if To == 'mixmhcpred':
-            return f'{gene_a}_{group_a}_{prot_a}__{gene_b}_{group_b}_{prot_b}'
-        elif To == 'netmhcpan':
-            return f'HLA-{gene_a}{group_a}{prot_a}-{gene_b}{group_b}{prot_b}'
-        else:
-            return f'{gene_a}*{group_a}:{prot_a}_{gene_b}*{group_b}:{prot_b}'
 
 
 # parse xls output from netMHCpan
