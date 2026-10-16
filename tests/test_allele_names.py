@@ -78,7 +78,15 @@ def test_binding_step_names_predictions_by_the_samples_alleles(tmp_path, predict
 
     monkeypatch.setattr(step, "RunNetMHCpan", fake_netmhc)
     exe = predictors[0] if mhc_class == "I" else predictors[1]
-    step.Main(step.ArgumentParser().parse_args([str(tmp_path / "s.mhc.txt"), str(tmp_path / "p.txt"),
-                                                str(tmp_path / "s"), "--mhc_class", mhc_class, "--exec_file", exe]))
+    args = step.ArgumentParser().parse_args([str(tmp_path / "s.mhc.txt"), str(tmp_path / "p.txt"),
+                                             str(tmp_path / "s"), "--mhc_class", mhc_class, "--exec_file", exe])
+    step.Main(args)
     predictions = pd.read_csv(tmp_path / f"s.pred.mhc{mhc_class.lower()}.csv")
     assert sorted(predictions["MHC"]) == expected
+    # nothing to predict is not an error: a rerun, then no allele the predictor lists, then no peptide
+    for listed, peptides in ((alleles, "PEPTIDEAAAAAAAA\n"), (["A*99:99"], "PEPTIDEAAAAAAAA\n"), (alleles, "")):
+        mhc(tmp_path, *listed)
+        (tmp_path / "p.txt").write_text(peptides)
+        with pytest.raises(SystemExit) as skip:
+            step.Main(args)
+        assert skip.value.code == 0

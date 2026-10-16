@@ -119,14 +119,14 @@ def Main(args):
     # exit if no alleles
     if len(alleles) == 0:
         print('Exit due to no alleles')
-        sys.exit(1)
+        sys.exit(0) # nothing to predict: not an error
 
     ### Peptides
     with open(args.peptide_file, 'r') as f:
         peptides = [line.strip() for line in f.readlines()]
     if len(peptides) == 0:
         print('Exit due to no peptides')
-        sys.exit(1)
+        sys.exit(0) # nothing to predict: not an error
     print('#Peptides =', len(peptides))
 
     ### Prediction
@@ -144,7 +144,7 @@ def Main(args):
     # save unpredicted peptides
     if len(left_peptides) == 0:
         print('Exit due to no unpredicted peptides')
-        sys.exit(1)
+        sys.exit(0) # nothing to predict: not an error
     else:
         SavePeptides(left_peptides, tmp_peptide_file) # save left peptides to temp peptide file
     # predict

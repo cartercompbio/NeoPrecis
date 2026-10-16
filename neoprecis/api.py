@@ -625,7 +625,7 @@ def RunNetMHCpan(alleles, peptide_file, output_file,
         '-f', peptide_file,
     ]
     with open(output_file, 'w') as f:
-        subprocess.run(cmd, stdout=f, text=True)
+        subprocess.run(cmd, stdout=f, text=True, check=True) # a failed run raises
 
 
 ### run MixMHCpred
@@ -940,11 +940,8 @@ class EpiMetrics():
         # aggregation
         aggregations = dict()
         for name, scores in metric_dict.items():
-            if name == 'PHBR': # fill NA -> harmonic meaning without masking
-                pad_num = 6 if self.mhc == 'i' else 10 # MHC-I has 6 alleles while MHC-II has 10 allele combinations
-                scores_ = np.pad(scores, (0, pad_num-len(scores)), constant_values=50) # fill NA with 50 (median rank score)
-                scores_ = np.ma.array(scores_, mask=np.zeros((pad_num,))) # no masking
-                score = self._aggregate(scores_, method='harmonic') # harmonic mean
+            if name == 'PHBR': # harmonic mean of every allele's best rank, binder or not; an allele without predictions is left out
+                score = self._aggregate(scores, method='harmonic')
             else: # other metrics - max score with masking
                 aggregate_scores = self._aggregate_all_methods(scores, mask, weights, best_idx)
                 for method, score in aggregate_scores.items():

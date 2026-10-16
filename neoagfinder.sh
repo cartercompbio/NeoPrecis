@@ -129,7 +129,8 @@ python3 "${SRC_DIR}/run_mhc_bind_pred.py" \
     "${OUTDIR}/peptides/${SAMPLE_NAME}.peptide.mhci.txt" \
     "${OUTDIR}/mhcbinds/${SAMPLE_NAME}" \
     --mhc_class I \
-    --exec_file "${NETMHCPAN_EXEC}"
+    --exec_file "${NETMHCPAN_EXEC}" \
+    || { echo "MHC-I binding prediction failed; stopping" >&2; exit 1; }
 echo
 
 # MHC-II
@@ -139,7 +140,8 @@ python3 "${SRC_DIR}/run_mhc_bind_pred.py" \
     "${OUTDIR}/peptides/${SAMPLE_NAME}.peptide.mhcii.txt" \
     "${OUTDIR}/mhcbinds/${SAMPLE_NAME}" \
     --mhc_class II \
-    --exec_file "${NETMHCIIPAN_EXEC}"
+    --exec_file "${NETMHCIIPAN_EXEC}" \
+    || { echo "MHC-II binding prediction failed; stopping" >&2; exit 1; }
 echo
 
 

@@ -52,7 +52,7 @@ To predict immunogenic neoantigens, the following inputs are required:
   - Record the VEP version used, as it is required for subsequent analyses
 - MHC Alleles
   - An allele list file (e.g. `examples/case.mhc.txt`) or an HLA-HD output file (e.g. `examples/case_final.result.txt`)
-  - Alleles have two or more fields; each is predicted under the name the predictor lists for it, as [MHC Allele Names](#mhc-allele-names) describes
+  - Alleles have two or more fields; see [MHC Allele Names](#mhc-allele-names)
   - It is recommended to use the default IMGT-HLA version provided by HLA-HD to ensure compatibility with MHC-binding predictors. Updated IMGT-HLA versions may include rare alleles that are not supported by all predictors.
 - RNA Expression (Optional)
   - A STAR-aligned `BAM` file (`examples/caseAligned.sortedByCoord.out.bam`) and an RSEM result file (`examples/case.genes.results`)
@@ -63,23 +63,17 @@ To predict immunogenic neoantigens, the following inputs are required:
 Each allele is predicted under the name the binding predictor lists for it. For example, the HLA-HD call `HLA-A*02:01:14Q` is predicted as `HLA-A*02:01`, and `HLA-A*30:14L` as `HLA-A*30:14L`.
 
 1. The allele is cut to two fields, the level netMHCpan and netMHCIIpan name alleles at, and the expression letter of its full name is kept: `A*02:01:14Q` gives `A*02:01` and `Q`.
-2. The predictor's own list (netMHCpan's `data/allelenames`, netMHCIIpan's `data/allelelist.txt`) is searched for these names, in order:
+2. The predictor's own allele list is searched for these names, in order: `data/allelenames` for netMHCpan, `data/allelelist.txt` for netMHCIIpan.
 
 | Expression letter | Names searched, in order | Example |
 | --- | --- | --- |
 | none | the two-field name | `A*02:01` as `HLA-A*02:01` |
-| `Q`, `L`, `S`, `C` or `A` | without the letter, then with it | `DQA1*01:07Q` as `DQA10107`; `A*30:14L` as `HLA-A*30:14L`, which netMHCpan lists only with its `L` |
-| `N`: a null allele, which makes no protein | only with the `N` | `DRB5*01:08:01N` as `DRB5_0108N`; `A*01:01:01:02N` is never predicted as `A*01:01` |
+| `Q`, `L`, `S`, `C` or `A` | without the letter, then with it | `DQA1*01:07Q` as `DQA10107`, in pairs such as `HLA-DQA10107-DQB10602`; `A*30:14L` as `HLA-A*30:14L`, which netMHCpan lists only with its `L` |
+| `N`: a null allele, which makes no protein | only with the `N` | `A*01:01:01:02N` is searched only as `HLA-A*01:01N`, which netMHCpan does not list, so it gets no predictions; it is never predicted as `A*01:01` |
 
-Results name a predicted allele by its two fields, and a null allele with its `N`: `A*30:14L` appears as `A*30:14`.
+Intermediate files name each allele by its two fields, and a null allele keeps its `N`: `A*30:14L` appears as `A*30:14`.
 
-An allele the predictor lists under none of its names (a null allele, or an allele the predictor lacks, such as `B*07:359`) gets no predictions but stays one of the sample's alleles:
-
-| Allele | Robustness and the other metrics | PHBR |
-| --- | --- | --- |
-| Predicted | its peptides' ranks | its best rank |
-| Not predicted | never a binder | left out of the harmonic mean |
-| Missing: a locus not typed, so fewer than 6 class I alleles or 10 class II pairs | not counted | each empty slot counts as rank 50 |
+An allele the predictor lists under none of its names, such as `B*07:359`, gets no predictions: like a locus not typed, it presents no neoantigen and is left out of PHBR.
 
 ### Usage
 To run the script, first prepare a `config.conf` file to define the paths to external tools and reference files. An example configuration file can be found at `config.conf`. Then, execute the command as follows:
@@ -122,6 +116,7 @@ The output folder contains a main output file, `${outdir}/${basename}.neoantigen
 
 **Notes**
 - {MHC} in the column names refers to the MHC class type, either I or II. Metrics are calculated separately for MHC class I and class II alleles.
+- A class has no columns when there is nothing to predict for it: no allele of that class that netMHCpan or netMHCIIpan lists, or no mutated peptide. If no mutation passes the filters, or a binding prediction fails, the script stops and writes no main output file.
 - NP-Immuno is trained on TCR-pMHC binding data from [IEDB](https://www.iedb.org/) and [VDJdb](https://vdjdb.cdr3.net/), as well as T-cell activation assay data from [CEDAR](https://cedar.iedb.org/).
 - NP-Integrated is a logistic regression model incorporating five features–DNA_AF, RNA_AF, RNA_EXP_QTL, PHBR, and NP-Immuno–trained on the [NCI GI cancer cohort](https://www.ncbi.nlm.nih.gov/projects/gap/cgi-bin/study.cgi?study_id=phs001003.v3.p1).
 

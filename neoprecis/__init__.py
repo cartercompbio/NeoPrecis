@@ -5,7 +5,7 @@ A comprehensive toolkit for neoantigen prediction, peptide generation,
 MHC binding prediction, and immunogenicity scoring.
 """
 
-__version__ = '1.5.0'
+__version__ = '1.5.1'
 __author__ = 'Kohan'
 
 # Import main API classes for direct access
